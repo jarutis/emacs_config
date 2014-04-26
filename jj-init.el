@@ -9,3 +9,4 @@
 ;; Display config
 
 (require 'jj-display)
+

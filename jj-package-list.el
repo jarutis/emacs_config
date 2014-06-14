@@ -3,7 +3,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; list of packages in use
 
-(ensure-package-installed 'solarized-theme 'projectile 'smex 'magit)
+(ensure-package-installed 'solarized-theme 'projectile 'smex 'magit
+                          'org-trello 'flx-ido 'auto-complete
+			  'ess 'god-mode 'evil 'evil-leader)
 
 ;; activate installed packages
 (package-initialize)

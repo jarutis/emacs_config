@@ -31,9 +31,14 @@
 (setq inferior-R-program-name "/usr/local/bin/R")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; make shell variables available in os x emacs
+(when (memq window-system '(mac ns))
+  (exec-path-from-shell-initialize))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; latex
-(setenv "PATH" (concat "/usr/texbin:/usr/local/bin/mysql:/usr/local/bin:"
-(getenv "PATH")))
+;; (setenv "PATH" (concat "/usr/texbin:/usr/local/bin/mysql:/usr/local/bin:"
+;; (getenv "PATH")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; copy paste osx

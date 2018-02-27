@@ -1,0 +1,615 @@
+#+TITLE: Emacs config
+
+Inspired by https://gist.github.com/saulius/b9f8b784dd3350be3a04c0d932f6087e
+
+* Introduction
+** Package management
+
+Uses Emacs [[https://github.com/raxod502/straight.el][straight.el]] in combination 
+with [[https://github.com/jwiegley/use-package][use-package]].
+
+Bootstrap straight.el
+
+#+BEGIN_SRC emacs-lisp
+  (setq package-archives
+        '(("gnu"              . "http://elpa.gnu.org/packages/")
+          ("melpa-stable"     . "http://stable.melpa.org/packages/")
+          ("melpa"            . "http://melpa.org/packages/")))
+
+  (setq debug-on-error t) ; for debug purpose
+
+  (setq straight-check-for-modifications 'never)
+
+  (let ((bootstrap-file (concat user-emacs-directory "straight/bootstrap.el"))
+        (bootstrap-version 2))
+    (unless (file-exists-p bootstrap-file)
+      (with-current-buffer
+          (url-retrieve-synchronously
+           "https://raw.githubusercontent.com/raxod502/straight.el/develop/install.el"
+           'silent 'inhibit-cookies)
+
+        (goto-char (point-max))
+        (eval-print-last-sexp)))
+    (load bootstrap-file nil 'nomessage))
+#+END_SRC
+
+Setup basic path related config variables
+
+#+BEGIN_SRC emacs-lisp
+  (defvar config-dir user-emacs-directory
+    "The dir where config lives.")
+  (defvar config-cache-dir (expand-file-name ".cache" config-dir)
+    "The dir to keep temporary cache files.")
+#+END_SRC
+* Core modules
+** Helpers
+Open this file
+#+BEGIN_SRC emacs-lisp
+  (defun open-config-file ()
+      "Open main config file"
+    (interactive)
+    (find-file (concat config-dir "main.org")))
+#+END_SRC
+** System
+
+#+BEGIN_SRC emacs-lisp
+  ;; UTF-8 all the things
+  (set-language-environment "UTF-8")
+  (prefer-coding-system 'utf-8-unix)
+  (set-terminal-coding-system 'utf-8)
+  (set-keyboard-coding-system 'utf-8)
+  (set-buffer-file-coding-system 'utf-8)
+  (set-default-coding-systems 'utf-8)
+
+  ;; Disable menu bar
+  (menu-bar-mode -1)
+
+  ;; store all backup and autosave files in the tmp dir
+  (setq backup-directory-alist
+        `((".*" . ,temporary-file-directory)))
+  (setq auto-save-file-name-transforms
+        `((".*" ,temporary-file-directory t)))
+
+  ;; do not create symbolic lock files
+  ;; http://stackoverflow.com/questions/5738170/why-does-emacs-create-temporary-symbolic-links-for-modified-files/12974060#12974060
+  (setq create-lockfiles nil)
+
+  ;; Make backups of files, even when they're in version control
+  (setq vc-make-backup-files t)
+
+  ;; disable auto save
+  (setq auto-save-default nil)
+
+  ;; turn off wordwrap
+  (setq-default truncate-lines 1)
+
+  ;; Do not really want to type yes or no each time, so:
+  ;; yes/no => y/n
+  (defalias 'yes-or-no-p 'y-or-n-p)
+
+  ;; Use text-mode for unknown files
+  ;; from https://www.gnu.org/software/emacs/manual/html_node/emacs/Major-Modes.html
+  (setq-default major-mode 'text-mode)
+
+  (setq
+   require-final-newline t                ;auto add newline at the end of file
+   default-major-mode 'text-mode          ;use text mode per default
+   history-length 250                     ;default is 30
+   tab-always-indent 'complete            ;try to complete before identing
+   indent-line-function 'indent-relative-maybe
+   confirm-nonexistent-file-or-buffer nil ;don't ask to create a buffer
+   recentf-max-saved-items 5000           ;same up to 5000 recent files
+   kill-ring-max 5000                     ;truncate kill ring after 5000 entries
+   mark-ring-max 5000)                    ;truncate mark ring after 5000 entries
+
+  ;; auto refresh buffers
+  (global-auto-revert-mode 1)
+  ;; also auto refresh dired, but be quiet about it
+  (setq global-auto-revert-non-file-buffers t)
+  (setq auto-revert-verbose nil)
+
+  ;; No vc backends. I only use git with magit
+  (setq vc-handled-backends nil)
+
+
+  ;; No bell rings
+  (setq ring-bell-function 'ignore)
+#+END_SRC
+
+** Package management
+
+#+BEGIN_SRC emacs-lisp
+  (straight-use-package 'use-package)
+
+  ;; Always ensure and defer
+  (setq use-package-always-ensure t)
+  (setq use-package-always-defer t)
+
+  (use-package no-littering
+    :straight t
+    :demand t)
+#+END_SRC
+
+** Key mapping setup
+
+#+BEGIN_SRC emacs-lisp
+  (use-package which-key
+    :straight t
+    :demand t
+    :config
+    (setq which-key-idle-delay 0.5)
+
+    (require 'which-key)
+
+    (which-key-mode)
+    (which-key-setup-side-window-bottom))
+
+  ;; macros
+  (defvar jj-leader "SPC"
+    "Leader key")
+  (defvar jj-mode ","
+    "Leader key for mode specific bindings")
+
+  (use-package general
+    :straight t
+    :init 
+    (general-evil-setup t)
+    (general-define-key
+     :prefix jj-leader
+     :non-normal-prefix "M-SPC"
+     :states '(normal visual insert emacs))
+    (general-define-key
+     :prefix jj-leader
+     :keymaps '(normal)
+     "SPC" 'execute-extended-command
+     "fed" 'open-config-file
+     "qq" 'save-buffers-kill-terminal
+     "fs" 'save-buffer
+     "bd" 'kill-this-buffer
+     "TAB" 'previous-buffer
+     "bn" 'next-buffer
+     "bb" 'ivy-switch-buffer
+     "bp" 'previous-buffer
+     "hdb" 'describe-bindings
+     "hdc" 'describe-char
+     "hdf" 'describe-function
+     "hdk" 'describe-key
+     "hdp" 'describe-package
+     "ws" 'split-window-vertically
+     "wv" 'split-window-horizontally
+     "wl" 'evil-window-right
+     "wk" 'evil-window-up
+     "wj" 'evil-window-down
+     "wh" 'evil-window-left
+     "wd" 'delete-window))
+#+END_SRC
+
+** Evil
+
+#+BEGIN_SRC emacs-lisp
+  (use-package evil
+    :straight t
+    :demand t
+    :init
+    (setq evil-intercept-esc 'always
+          evil-toggle-key "C-\\"
+          evil-normal-state-tag " N "
+          evil-insert-state-tag " I "
+          evil-emacs-state-tag  " E "
+          evil-visual-state-tag " V "
+          evil-want-C-i-jump nil ;; make TAB work in console
+          evil-want-fine-undo t)
+
+    :config
+    (evil-mode))
+
+  (use-package evil-surround
+    :straight t
+    :after evil
+    :diminish global-evil-surround-mode
+    :config
+    (global-evil-surround-mode))
+
+  (use-package evil-collection
+    :after evil
+    :straight (evil-collection 
+                :type git
+                :host github
+                :repo "jojojames/evil-collection")
+    :config
+    (evil-collection-init))
+
+  (use-package evil-matchit
+    :straight t
+    :after evil
+    :config
+    (global-evil-matchit-mode 1))
+#+END_SRC
+
+Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
+#+BEGIN_SRC emacs-lisp
+  (use-package evil-mc
+    :straight t
+    :after evil
+    :config
+    (global-evil-mc-mode  1))
+#+END_SRC
+** Editor
+
+#+BEGIN_SRC emacs-lisp
+  (use-package pbcopy
+    :straight t
+    :if (and (eq system-type 'darwin) (not (display-graphic-p)))
+    :init (turn-on-pbcopy))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+  (use-package nlinum
+    :straight t
+    :init
+    (setq linum-format "%d ")
+    (nmap :prefix jj-leader
+      "t" '(:ignore t :which-key "toggle")
+      "t l" '(linum-mode :which-key "line numbers")
+      "t e" '(flycheck-mode :which-key "linting")))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+  (use-package whitespace
+    :straight t
+    :demand t
+    :diminish global-whitespace-mode
+    :init
+    (nmap :prefix jj-leader
+      "t w" 'whitespace-mode)
+    :config
+    (setq tab-width 2)
+    (setq indent-tabs-mode nil)
+
+    (setq whitespace-style '(face empty tabs lines-tail trailing))
+    (setq whitespace-line-column 80)
+
+    (add-hook 'prog-mode-hook 'whitespace-mode))
+
+  (use-package ws-butler
+    :straight t
+    :demand t
+    :diminish ws-butler-mode
+    :config
+    (add-hook 'prog-mode-hook 'ws-butler-mode))
+
+  (use-package expand-region
+    :straight t
+    :init
+    (nmap :prefix jj-leader
+      "v" '(expand-region :which-key "expand region"))
+    (vmap
+      "v" 'er/expand-region)
+    :config
+    (setq expand-region-contract-fast-key "v"
+          expand-region-reset-fast-key "r"))
+
+  (use-package rainbow-delimiters
+    :straight t
+    :diminish rainbow-delimiters-mode
+    :config
+    (add-hook 'prog-mode-hook 'rainbow-delimiters-mode))
+
+  (use-package evil-nerd-commenter
+    :straight t
+    :init
+    (vmap
+      "g c" 'evilnc-comment-or-uncomment-lines)
+
+    (nmap
+      "g c" '(evilnc-comment-or-uncomment-lines :which-key "Comment/uncomment lines")))
+
+  (use-package dumb-jump
+    :straight t
+    :init
+    (setq dumb-jump-selector 'ivy)
+    (nmap
+      "g d" 'dumb-jump-go))
+
+  (use-package avy
+    :straight t
+    :init
+    (vmap :prefix jj-leader
+      "jj" 'avy-goto-char)
+    (nmap :prefix jj-leader
+      "jj" 'avy-goto-char))
+
+  ;; configuration
+  ;; auto refresh buffers
+  (global-auto-revert-mode 1)
+  ;; also auto refresh dired, but be quiet about it
+  (setq global-auto-revert-non-file-buffers t)
+  (setq auto-revert-verbose nil)
+  ;;(require 'saveplace)
+  ;;(setq-default save-place t)
+  ;;(setq save-place-file (expand-file-name ".places" config-dir))
+#+END_SRC
+
+** Autocompletion
+
+#+BEGIN_SRC emacs-lisp
+  (use-package company
+    :straight t
+    :demand t
+    :diminish company-mode
+    :config
+    (setq company-idle-delay 0.5)
+    (setq company-tooltip-limit 10)
+    (setq company-minimum-prefix-length 2)
+    ;; invert the navigation direction if the the completion popup-isearch-match
+    ;; is displayed on top (happens near the bottom of windows)
+    (setq company-tooltip-flip-when-above t)
+
+    (add-hook 'text-mode-hook 'company-mode)
+    (add-hook 'prog-mode-hook 'company-mode))
+#+END_SRC
+   
+
+** Syntax checkers and linters
+
+#+BEGIN_SRC emacs-lisp
+  (use-package flycheck
+    :straight t
+    :demand t
+    :commands (flycheck-mode flycheck-list-errors flycheck-buffer)
+    :init
+    (nmap 
+      "] e" 'flycheck-next-error
+      "[ e" 'flycheck-previous-error)
+    (nmap :prefix jj-leader
+      "e" '(:ignore t :which-key "lint errors")
+      "e l" '(flycheck-list-errors :which-key "list errors")
+      "e b" '(flycheck-buffer :which-key "check buffer")
+      "e v" '(flycheck-verify-setup :which-key "verify linter setup")
+      "e l" '(flycheck-list-errors :which-key "list-errors"))
+    :config
+    (setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc))
+    ;; Emacs feels snappier without checks on idle/change
+    (setq flycheck-check-syntax-automatically '(save mode-enabled))
+
+    (global-flycheck-mode 1))
+#+END_SRC
+
+** Project management
+
+#+BEGIN_SRC emacs-lisp
+  (use-package projectile
+    :straight t
+    :diminish projectile-mode
+    :init
+    (nmap :prefix jj-leader
+      "p" '(:ignore t :which-key "project")
+      "p d" '(counsel-projectile-find-dir :which-key "jump to dir")
+      "p f" '(counsel-projectile :which-key "jump to file")
+      "p g" '(counsel-git-grep :which-key "git grep")
+      "p r" '(projectile-recentf :which-key "recent")
+      "p i" '(projectile-invalidate-cache :which-key "invalidate cache")
+          "p p" '(counsel-projectile-switch-project :which-key "other project")
+          "p b" '(counsel-projectile-switch-to-buffer :which-key "buffer"))
+    :config
+    (setq projectile-enable-caching t
+          projectile-completion-system 'ivy
+          projectile-sort-order 'recentf)
+
+    (projectile-global-mode))
+
+  (use-package counsel-projectile
+    :straight t
+    :config
+    (counsel-projectile-mode))
+#+END_SRC
+
+** Git
+
+#+BEGIN_SRC emacs-lisp
+  (use-package magit
+    :straight t
+    :init
+    (nmap :prefix jj-leader
+      "g" '(:ignore t :which-key "git")
+      "g b" '(magit-blame :which-key "git blame")
+      "g l" '(magit-log-current :which-key "git log")
+      "g s" '(magit-status :which-key "git status"))
+
+    :config
+    (setq magit-display-buffer-function #'magit-display-buffer-fullframe-status-v1)
+    (setq magit-push-arguments (quote ("--force-with-lease")))
+
+    (with-eval-after-load 'magit-status
+      (define-key magit-status-mode-map "p" 'magit-push-popup)))
+
+  (use-package evil-magit
+    :straight t
+    :after magit)
+
+  (use-package git-timemachine
+    :straight t
+    :init
+    (nmap :prefix jj-leader
+      "g t" '(git-timemachine :which-key "git timemachine"))
+
+    (defadvice git-timemachine-mode (after toggle-evil activate)
+       "Turn off `evil-local-mode' when enabling
+       `git-timemachine-mode', and turn it back on when disabling
+       `git-timemachine-mode'."
+       (evil-local-mode (if git-timemachine-mode -1 1))))
+#+END_SRC
+** Ivy
+
+#+BEGIN_SRC emacs-lisp
+  (use-package ivy
+    :straight t
+    :diminish ivy-mode
+    :init
+    (nmap :prefix jj-leader
+      "s s" '(swiper :which-key "swiper")
+      "f f" '(counsel-find-file :which-key "find file in current dir")
+      "/" '(counsel-rg :which-key "find in project"))
+    :config
+    (setq ivy-use-virtual-buffers t)
+    (require 'counsel)
+    (ivy-mode 1))
+#+END_SRC
+** UI
+
+#+BEGIN_SRC emacs-lisp
+  (use-package zenburn-theme
+    :straight t
+    :init
+    (load-theme 'zenburn t))
+
+  (use-package spaceline
+    :straight t
+    :init
+    (require 'spaceline-config)
+    (spaceline-toggle-minor-modes-off)
+    (spaceline-toggle-workspace-number-off)
+    (spaceline-toggle-window-number-off)
+    (spaceline-toggle-anzu-off)
+    (spaceline-toggle-purpose-off)
+    (spaceline-toggle-buffer-position-off)
+    (spaceline-toggle-hud-off)
+    (spaceline-spacemacs-theme))
+
+  (use-package dimmer
+    :straight t
+    :init
+    (setq dimmer-percent 0.1)
+    (dimmer-activate))
+#+END_SRC
+* Modules
+
+** Org
+
+#+BEGIN_SRC emacs-lisp
+  (use-package evil-org
+    :straight t
+    :after org
+    :general
+    (:keymaps 'scala-mode-map
+     :states 'normal
+     :prefix jj-leader
+     "'" 'org-edit-special)
+    :config
+    (add-hook 'org-mode-hook 'evil-org-mode)
+    (add-hook 'evil-org-mode-hook
+              (lambda ()
+                (evil-org-set-key-theme))))
+#+END_SRC
+
+** Scala
+
+#+BEGIN_SRC emacs-lisp
+  (use-package scala-mode
+    :straight t
+    :mode "\\.s\\(cala\\|bt\\)$"
+    :config
+    (setq scala-indent:align-parameters t))
+
+  (use-package ensime
+    :straight (ensime :host github :branch "2.0" :repo "ensime/ensime-emacs")
+    :after scala-mode
+    :commands (ensime ensime-mode ensime-scala-mode-hook)
+    :general
+    (:keymaps 'scala-mode-map
+     :states 'normal
+     :prefix jj-mode
+     "/"  'ensime-search
+     "'"  'ensime-inf-switch
+
+     "bc" 'ensime-sbt-do-compile
+     "bC" 'ensime-sbt-do-clean
+     "bi" 'ensime-sbt-switch
+     "bp" 'ensime-sbt-do-package
+     "br" 'ensime-sbt-do-run
+
+     "ct" 'ensime-typecheck-current-buffer
+     "cT" 'ensime-typecheck-all
+
+     "dA" 'ensime-db-attach
+     "db" 'ensime-db-set-break
+     "dB" 'ensime-db-clear-break
+     "dC" 'ensime-db-clear-all-breaks
+     "dc" 'ensime-db-continue
+     "di" 'ensime-db-step
+     "dn" 'ensime-db-next
+     "do" 'ensime-db-step-out
+     "dq" 'ensime-db-quit
+     "dr" 'ensime-db-run
+     "dt" 'ensime-db-backtrace
+     "dv" 'ensime-db-inspect-value-at-point
+
+     "ee" 'ensime-print-errors-at-point
+     "el" 'ensime-show-all-errors-and-warnings
+     "es" 'ensime-stacktrace-switch
+
+     "gp" 'ensime-pop-find-definition-stack
+     "gi" 'ensime-goto-impl
+     "gt" 'ensime-goto-test
+
+     "hh" 'ensime-show-doc-for-symbol-at-point
+     "hT" 'ensime-type-at-point-full-name
+     "ht" 'ensime-type-at-point
+     "hu" 'ensime-show-uses-of-symbol-at-point
+
+     "ii" 'ensime-inspect-type-at-point
+     "iI" 'ensime-inspect-type-at-point-other-frame
+     "ip" 'ensime-inspect-project-package
+
+     "nF" 'ensime-reload-open-files
+     "ns" 'ensime
+     "nS" 'ensime-gen-and-restart
+
+     "ra" 'ensime-refactor-add-type-annotation
+     "rd" 'ensime-refactor-diff-inline-local
+     "rD" 'ensime-undo-peek
+     "rf" 'ensime-format-source
+     "ri" 'ensime-refactor-diff-organize-imports
+     "rm" 'ensime-refactor-diff-extract-method
+     "rr" 'ensime-refactor-diff-rename
+     "rt" 'ensime-import-type-at-point
+     "rv" 'ensime-refactor-diff-extract-local
+
+     "ta" 'ensime-sbt-do-test-dwim
+     "tr" 'ensime-sbt-do-test-quick-dwim
+     "tt" 'ensime-sbt-do-test-only-dwim
+
+     "sa" 'ensime-inf-load-file
+     "sb" 'ensime-inf-eval-buffer
+     "sB" 'ensime-inf-eval-buffer-switch
+     "si" 'ensime-inf-switch
+     "sr" 'ensime-inf-eval-region
+     "sR" 'ensime-inf-eval-region-switch
+
+     "yT" 'scala/yank-type-at-point-full-name
+     "yt" 'scala/yank-type-at-point
+
+     "z"  'ensime-expand-selection-command
+     )
+    :init
+    (setq ensime-startup-snapshot-notification nil
+          ensime-startup-notification nil
+          ensime-eldoc-hints 'all
+          flycheck-scalastyle-jar "/usr/local/Cellar/scalastyle/0.8.0/libexec/scalastyle_2.11-0.8.0-batch.jar"
+          flycheck-scalastylerc "/Users/jj/dev/dap/dwh/scalastyle_config.xml"
+          ensime-sem-high-faces '((implicitConversion nil) (implicitParams nil)))
+    :config
+    (evil-define-key 'insert ensime-mode-map
+      (kbd "M-.") 'ensime-edit-definition
+      (kbd "M-,") 'ensime-pop-find-definition-stack)
+
+    (evil-define-key 'normal ensime-mode-map
+      (kbd "M-.") 'ensime-edit-definition
+      (kbd "M-,") 'ensime-pop-find-definition-stack)
+    
+    ;; Fix void-variable imenu-auto-rescan error caused by `ensime--setup-imenu'
+    ;; trying to make imenu variables buffer local before imenu is loaded.
+    (require 'imenu))
+#+END_SRC
+   
+   

@@ -161,7 +161,6 @@ Open this file
     (general-define-key
      :prefix jj-leader
      :keymaps '(normal)
-     "SPC" 'execute-extended-command
      "fed" 'open-config-file
      "qq" 'save-buffers-kill-terminal
      "fs" 'save-buffer
@@ -278,6 +277,13 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
     :config
     (add-hook 'prog-mode-hook 'ws-butler-mode))
 
+  (use-package smex
+    :straight t
+    :demand t
+    :bind (("M-x" . 'smex))
+    :config
+    (smex-initialize))
+
   (use-package expand-region
     :straight t
     :init
@@ -306,18 +312,19 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
 
   (use-package dumb-jump
     :straight t
+    :after ensime
+    :bind (("M-." . 'dumb-jump-go)
+           ("M-," . 'dumb-jump-back))
     :init
-    (setq dumb-jump-selector 'ivy)
-    (nmap
-      "g d" 'dumb-jump-go))
+    (setq dumb-jump-selector 'ivy))
 
   (use-package avy
     :straight t
     :init
     (vmap :prefix jj-leader
-      "jj" 'avy-goto-char)
+      "SPC" 'avy-goto-char)
     (nmap :prefix jj-leader
-      "jj" 'avy-goto-char))
+      "SPC" 'avy-goto-char))
 
   ;; configuration
   ;; auto refresh buffers
@@ -384,10 +391,12 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
     :init
     (nmap :prefix jj-leader
       "p" '(:ignore t :which-key "project")
+      "p s" '(counsel-projectile-rg :which-key "search in project")
+      "p r" '(projectile-replace :which-key "replace in project")
+      "p R" '(projectile-replace-regexp :which-key "replace regexp in project")
       "p d" '(counsel-projectile-find-dir :which-key "jump to dir")
       "p f" '(counsel-projectile :which-key "jump to file")
       "p g" '(counsel-git-grep :which-key "git grep")
-      "p r" '(projectile-recentf :which-key "recent")
       "p i" '(projectile-invalidate-cache :which-key "invalidate cache")
           "p p" '(counsel-projectile-switch-project :which-key "other project")
           "p b" '(counsel-projectile-switch-to-buffer :which-key "buffer"))
@@ -516,8 +525,12 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
     :after scala-mode
     :commands (ensime ensime-mode ensime-scala-mode-hook)
     :general
+    (:keymaps 'ensime-mode-map
+     :states '(normal visual insert)
+     "M-." 'dumb-jump-go
+     "M-," 'dumb-jump-back)
     (:keymaps 'scala-mode-map
-     :states 'normal
+     :states '(normal visual)
      :prefix jj-mode
      "/"  'ensime-search
      "'"  'ensime-inf-switch
@@ -599,17 +612,19 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
           flycheck-scalastylerc "/Users/jj/dev/dap/dwh/scalastyle_config.xml"
           ensime-sem-high-faces '((implicitConversion nil) (implicitParams nil)))
     :config
-    (evil-define-key 'insert ensime-mode-map
-      (kbd "M-.") 'ensime-edit-definition
-      (kbd "M-,") 'ensime-pop-find-definition-stack)
-
-    (evil-define-key 'normal ensime-mode-map
-      (kbd "M-.") 'ensime-edit-definition
-      (kbd "M-,") 'ensime-pop-find-definition-stack)
-    
     ;; Fix void-variable imenu-auto-rescan error caused by `ensime--setup-imenu'
     ;; trying to make imenu variables buffer local before imenu is loaded.
     (require 'imenu))
 #+END_SRC
-   
-   
+      
+** GNU Plot
+#+BEGIN_SRC emacs-lisp
+  (use-package gnuplot-mode
+    :straight t
+    :config
+    (setq gnuplot-program "/usr/local/bin/gnuplot")
+    (setq auto-mode-alist
+          (append '(("\\.\\(gp\\|gnuplot\\)$" . gnuplot-mode)) auto-mode-alist)))
+#+END_SRC
+
+ 

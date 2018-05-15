@@ -492,7 +492,7 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
     (dimmer-activate))
 #+END_SRC
 * Modules
-
+  
 ** Org
 
 #+BEGIN_SRC emacs-lisp
@@ -505,6 +505,7 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
      :prefix jj-leader
      "'" 'org-edit-special)
     :config
+    (setq org-table-number-regexp "never")
     (add-hook 'org-mode-hook 'evil-org-mode)
     (add-hook 'evil-org-mode-hook
               (lambda ()
@@ -621,10 +622,67 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
 #+BEGIN_SRC emacs-lisp
   (use-package gnuplot-mode
     :straight t
-    :config
-    (setq gnuplot-program "/usr/local/bin/gnuplot")
-    (setq auto-mode-alist
-          (append '(("\\.\\(gp\\|gnuplot\\)$" . gnuplot-mode)) auto-mode-alist)))
+    :mode ("\\.\\(gp\\|gnuplot\\)$" . gnuplot-mode)
+    :custom (gnuplot-program "/usr/local/bin/gnuplot"))
 #+END_SRC
 
- 
+** JS
+#+BEGIN_SRC emacs-lisp
+  (setq js-indent-level 2)
+  (use-package js2-mode
+    :straight t
+    :mode ("\\.js\\'" . js2-mode)
+    :hook (js2-mode . js2-imenu-extras-mode))
+
+  (use-package js2-refactor
+    :straight t
+    :after (js2-mode)
+    :hook (js2-mode . js2-refactor-mode)
+    :config
+    (js2r-add-keybindings-with-prefix "C-c C-r"))
+
+  (use-package xref-js2
+    :straight t
+    :after (js2-mode)
+    :init
+    (define-key js-mode-map (kbd "M-.") nil)
+    (add-hook 'js2-mode-hook (lambda ()
+      (add-hook 'xref-backend-functions #'xref-js2-xref-backend nil t))))
+
+  (use-package company-tern
+    :straight t
+    :after (js2-mode company)
+    :hook ((js2-mode . tern-mode)
+           (js2-mode . company-mode))
+    :init
+    (add-to-list 'company-backends 'company-tern))
+#+END_SRC
+
+** HTML
+#+BEGIN_SRC emacs-lisp
+  (use-package web-mode
+    :straight t
+    :mode ("\\.html?\\'" . web-mode)
+    :custom
+    (web-mode-enable-auto-closing t "Complete html tags on </"))
+
+  (use-package company-web
+    :straight t
+    :init
+    (add-to-list 'company-backends 'company-web-html))
+#+END_SRC
+
+** Graphviz
+#+BEGIN_SRC emacs-lisp
+  (use-package graphviz-dot-mode
+    :straight t)
+#+END_SRC
+   
+** Rest
+#+BEGIN_SRC emacs-lisp
+  (use-package restclient
+    :straight t
+    :mode ("\\.http\\'" . restclient-mode))
+#+END_SRC
+
+

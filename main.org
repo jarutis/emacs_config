@@ -61,6 +61,9 @@ Open this file
   (set-buffer-file-coding-system 'utf-8)
   (set-default-coding-systems 'utf-8)
 
+  ;; Do not convert spaces to tabs
+  (setq-default indent-tabs-mode nil)
+
   ;; Disable menu bar
   (menu-bar-mode -1)
 
@@ -632,7 +635,6 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
     :straight t
     :mode ("\\.js\\'" . js2-mode)
     :bind (:map js-mode-map ("M-." . nil))
-    :interpreter ("node" . j2-mode)
     :hook (js2-mode . js2-imenu-extras-mode)
     :custom (js-indent-level 2)
     :init

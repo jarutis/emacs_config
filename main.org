@@ -312,11 +312,16 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
 
   (use-package dumb-jump
     :straight t
-    :after ensime
-    :bind (("M-." . 'dumb-jump-go)
-           ("M-," . 'dumb-jump-back))
-    :init
-    (setq dumb-jump-selector 'ivy))
+    :general
+    (:keymaps 'normal
+     :prefix jj-leader
+     "j" '(:ignore t :wk "jump around")
+     "jg" 'dumb-jump-go
+     "jo" 'dumb-jump-go-other-window
+     "ji" 'dumb-jump-go-prompt
+     "jb" 'dumb-jump-back)
+    :custom
+    (dumb-jump-selector 'ivy))
 
   (use-package avy
     :straight t

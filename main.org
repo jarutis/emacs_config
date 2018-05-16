@@ -189,6 +189,7 @@ Open this file
   (use-package evil
     :straight t
     :demand t
+    :bind (:map evil-normal-state-map ("M-." . nil))
     :init
     (setq evil-intercept-esc 'always
           evil-toggle-key "C-\\"
@@ -529,10 +530,6 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
     :after scala-mode
     :commands (ensime ensime-mode ensime-scala-mode-hook)
     :general
-    (:keymaps 'ensime-mode-map
-     :states '(normal visual insert)
-     "M-." 'dumb-jump-go
-     "M-," 'dumb-jump-back)
     (:keymaps 'scala-mode-map
      :states '(normal visual)
      :prefix jj-mode
@@ -631,30 +628,30 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
 
 ** JS
 #+BEGIN_SRC emacs-lisp
-  (setq js-indent-level 2)
   (use-package js2-mode
     :straight t
     :mode ("\\.js\\'" . js2-mode)
-    :hook (js2-mode . js2-imenu-extras-mode))
+    :bind (:map js-mode-map ("M-." . nil))
+    :interpreter ("node" . j2-mode)
+    :hook (js2-mode . js2-imenu-extras-mode)
+    :custom (js-indent-level 2)
+    :init
+    (add-hook 'js2-mode-hook
+              (lambda ()
+                (add-hook 'xref-backend-functions 'xref-js2-xref-backend nil t))))
 
   (use-package js2-refactor
     :straight t
-    :after (js2-mode)
     :hook (js2-mode . js2-refactor-mode)
     :config
     (js2r-add-keybindings-with-prefix "C-c C-r"))
 
   (use-package xref-js2
     :straight t
-    :after (js2-mode)
-    :init
-    (define-key js-mode-map (kbd "M-.") nil)
-    (add-hook 'js2-mode-hook (lambda ()
-      (add-hook 'xref-backend-functions #'xref-js2-xref-backend nil t))))
+    :commands xref-js2-xref-backend)
 
   (use-package company-tern
     :straight t
-    :after (js2-mode company)
     :hook ((js2-mode . tern-mode)
            (js2-mode . company-mode))
     :init

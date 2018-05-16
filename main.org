@@ -297,9 +297,7 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
 
   (use-package rainbow-delimiters
     :straight t
-    :diminish rainbow-delimiters-mode
-    :config
-    (add-hook 'prog-mode-hook 'rainbow-delimiters-mode))
+    :hook (prog-mode . rainbow-delimiters-mode))
 
   (use-package evil-nerd-commenter
     :straight t

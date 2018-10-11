@@ -40,6 +40,12 @@ Setup basic path related config variables
     "The dir where config lives.")
   (defvar config-cache-dir (expand-file-name ".cache" config-dir)
     "The dir to keep temporary cache files.")
+  (defvar config-custom-package-dir (expand-file-name "packages" config-dir)
+    "The dir to download packages not available in melpa.")
+
+  (when (not (file-directory-p config-custom-package-dir))
+    (make-directory config-custom-package-dir))
+
 #+END_SRC
 * Core modules
 ** Helpers
@@ -159,11 +165,7 @@ Open this file
     (general-evil-setup t)
     (general-define-key
      :prefix jj-leader
-     :non-normal-prefix "M-SPC"
-     :states '(normal visual insert emacs))
-    (general-define-key
-     :prefix jj-leader
-     :keymaps '(normal)
+     :states 'normal
      "fed" 'open-config-file
      "qq" 'save-buffers-kill-terminal
      "fs" 'save-buffer
@@ -363,16 +365,26 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
     (add-hook 'prog-mode-hook 'company-mode))
 #+END_SRC
    
-
 ** Syntax checkers and linters
 
 #+BEGIN_SRC emacs-lisp
+  (defun my/use-eslint-from-node-modules ()
+    (let* ((root (locate-dominating-file
+                  (or (buffer-file-name) default-directory)
+                  "node_modules"))
+           (eslint (and root
+                        (expand-file-name "node_modules/eslint/bin/eslint.js"
+                                          root))))
+      (when (and eslint (file-executable-p eslint))
+        (setq-local flycheck-javascript-eslint-executable eslint))))
+
   (use-package flycheck
     :straight t
     :demand t
     :commands (flycheck-mode flycheck-list-errors flycheck-buffer)
+    :hook (flycheck-mode . my/use-eslint-from-node-modules)
     :init
-    (nmap 
+    (nmap
       "] e" 'flycheck-next-error
       "[ e" 'flycheck-previous-error)
     (nmap :prefix jj-leader
@@ -499,10 +511,27 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
     (dimmer-activate))
 #+END_SRC
 * Modules
-  
 ** Org
 
 #+BEGIN_SRC emacs-lisp
+  (use-package org
+    :custom
+      (org-directory "~/Dropbox/org")
+      (org-default-notes-file (concat org-directory "/notes.org"))
+    :hook
+      (org-babel-after-execute . org-redisplay-inline-images)
+    :config
+    (load-file (concat config-custom-package-dir "/ox-confluence.el"))
+    (require 'ox-confluence nil t)
+      (org-babel-do-load-languages
+       'org-babel-load-languages
+       '((ruby       . t)
+         (latex     . t)
+         (scala     . t)
+         (python    . t)
+         (R         . t)
+         (C         . t))))
+
   (use-package evil-org
     :straight t
     :after org
@@ -513,12 +542,34 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
      "'" 'org-edit-special)
     :config
     (setq org-table-number-regexp "never")
+    (setq org-capture-templates
+          '(("t" "Todo" entry (file+headline "~/org/gtd.org" "Tasks")
+             "* TODO %?\n  %i\n  %a")
+            ("j" "Journal" entry (file+datetree "~/org/journal.org")
+             "* %?\nEntered on %U\n  %i\n  %a")))
     (add-hook 'org-mode-hook 'evil-org-mode)
     (add-hook 'evil-org-mode-hook
               (lambda ()
                 (evil-org-set-key-theme))))
 #+END_SRC
+*** Github Flavored Markdown
+#+BEGIN_SRC emacs-lisp
+  (use-package ox-gfm
+    :straight t
+    :after org)
 
+  (eval-after-load "org" '(require 'ox-gfm nil t))
+#+END_SRC
+*** Confluence
+#+BEGIN_SRC emacs-lisp
+  (when (not (file-exists-p (expand-file-name "ox-confluence.el" config-custom-package-dir)))
+    (url-retrieve
+     "https://raw.githubusercontent.com/emacsmirror/org/master/contrib/lisp/ox-confluence.el"
+     (lambda (s)
+       (re-search-forward "\r?\n\r?\n") ;; skip the headers
+       (write-region (point) (point-max) (expand-file-name "ox-confluence.el" config-custom-package-dir)))))
+
+#+END_SRC
 ** Scala
 
 #+BEGIN_SRC emacs-lisp
@@ -602,6 +653,8 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
      "si" 'ensime-inf-switch
      "sr" 'ensime-inf-eval-region
      "sR" 'ensime-inf-eval-region-switch
+     "ss" 'sbt-send-region
+     "sS" 'sbt-paste-region
 
      "yT" 'scala/yank-type-at-point-full-name
      "yt" 'scala/yank-type-at-point
@@ -629,37 +682,12 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
     :custom (gnuplot-program "/usr/local/bin/gnuplot"))
 #+END_SRC
 
-** JS
+** YAML
 #+BEGIN_SRC emacs-lisp
-  (use-package js2-mode
+  (use-package yaml-mode
     :straight t
-    :mode ("\\.js\\'" . js2-mode)
-    :bind (:map js-mode-map ("M-." . nil))
-    :hook (js2-mode . js2-imenu-extras-mode)
-    :custom (js-indent-level 2)
-    :init
-    (add-hook 'js2-mode-hook
-              (lambda ()
-                (add-hook 'xref-backend-functions 'xref-js2-xref-backend nil t))))
-
-  (use-package js2-refactor
-    :straight t
-    :hook (js2-mode . js2-refactor-mode)
-    :config
-    (js2r-add-keybindings-with-prefix "C-c C-r"))
-
-  (use-package xref-js2
-    :straight t
-    :commands xref-js2-xref-backend)
-
-  (use-package company-tern
-    :straight t
-    :hook ((js2-mode . tern-mode)
-           (js2-mode . company-mode))
-    :init
-    (add-to-list 'company-backends 'company-tern))
+    :mode ("\\.yml\\'" . yaml-mode))
 #+END_SRC
-
 ** HTML
 #+BEGIN_SRC emacs-lisp
   (use-package web-mode
@@ -686,5 +714,112 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
     :straight t
     :mode ("\\.http\\'" . restclient-mode))
 #+END_SRC
+** R
+#+BEGIN_SRC emacs-lisp
+  (defun spacemacs/ess-start-repl ()
+    "Start a REPL corresponding to the ess-language of the current buffer."
+    (interactive)
+    (cond
+     ((string= "S" ess-language) (call-interactively 'R))
+     ((string= "STA" ess-language) (call-interactively 'stata))
+     ((string= "SAS" ess-language) (call-interactively 'SAS))))
 
+  (use-package ess
+    :straight t
+    :ensure t
+    :pin melpa
+    :mode ("\\.r\\'" . R-mode)
+    :custom
+    (ess-history-file "/Users/jj/.RHistory")
+    (ess-smart-S-assign-key "~")
+    (flycheck-lintr-linters "default_linters[-15]")
+    :general
+    (:keymaps 'ess-mode-map
+     :states '(normal visual)
+     :prefix jj-mode
+     ;; noweb
+     "cC" 'ess-eval-chunk-and-go
+     "cc" 'ess-eval-chunk
+     "cd" 'ess-eval-chunk-and-step
+     "cm" 'ess-noweb-mark-chunk
+     "cN" 'ess-noweb-previous-chunk
+     "cn" 'ess-noweb-next-chunk
+     ;; REPL
+     "si" 'spacemacs/ess-start-repl
+     "sB" 'ess-eval-buffer-and-go
+     "sb" 'ess-eval-buffer
+     "sD" 'ess-eval-function-or-paragraph-and-step
+     "sd" 'ess-eval-region-or-line-and-step
+     "sL" 'ess-eval-line-and-go
+     "sl" 'ess-eval-line
+     "sR" 'ess-eval-region-and-go
+     "sr" 'ess-eval-region
+     "sT" 'ess-eval-function-and-go
+     "st" 'ess-eval-function)
+    :config
+    (setq ess-default-style 'RStudio))
+#+END_SRC
+   
+** GNU APL
+#+BEGIN_SRC emacs-lisp
+  (use-package gnu-apl-mode
+    :straight t
+    :mode ("\\.apl\\'" . gnu-apl-mode))
+#+END_SRC
+** GNU Octave
+#+BEGIN_SRC emacs-lisp
+  (use-package octave
+    :mode ("\\.m\\'" . octave-mode)
+    :general
+    (:keymaps 'octave-mode-map
+     :states '(normal visual)
+     :prefix jj-mode
+     "si" 'run-octave
+     "sr" 'octave-send-region
+     "sl" 'octave-send-line
+    ))
+#+END_SRC
+   
+** LSP Mode
+#+BEGIN_SRC emacs-lisp
+  (use-package lsp-mode
+    :ensure t
+    :config
 
+    (require 'lsp-imenu)
+    (add-hook 'lsp-after-open-hook 'lsp-enable-imenu)  
+    ;; get lsp-python-enable defined
+    ;; NB: use either projectile-project-root or ffip-get-project-root-directory
+    ;;     or any other function that can be used to find the root directory of a project
+    (lsp-define-stdio-client lsp-python "python"
+                             #'projectile-project-root
+                             '("pyls"))
+
+    (add-hook 'python-mode-hook
+              (lambda ()
+                (lsp-python-enable)))
+
+    ;; lsp extras
+    (use-package lsp-ui
+      :ensure t
+      :config
+      (setq lsp-ui-sideline-ignore-duplicate t)
+      (add-hook 'lsp-mode-hook 'lsp-ui-mode))
+
+    (use-package company-lsp
+      :config
+      (push 'company-lsp company-backends))
+
+    ;; NB: only required if you prefer flake8 instead of the default
+    ;; send pyls config via lsp-after-initialize-hook -- harmless for
+    ;; other servers due to pyls key, but would prefer only sending this
+    ;; when pyls gets initialised (:initialize function in
+    ;; lsp-define-stdio-client is invoked too early (before server
+    ;; start)) -- cpbotha
+    (defun lsp-set-cfg ()
+      (let ((lsp-cfg `(:pyls (:configurationSources ("flake8")))))
+        ;; TODO: check lsp--cur-workspace here to decide per server / project
+        (lsp--set-configuration lsp-cfg)))
+
+    (add-hook 'lsp-after-initialize-hook 'lsp-set-cfg))
+#+END_SRC

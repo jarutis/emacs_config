@@ -86,9 +86,6 @@ Open this file
   ;; Make backups of files, even when they're in version control
   (setq vc-make-backup-files t)
 
-  ;; disable auto save
-  (setq auto-save-default nil)
-
   ;; turn off wordwrap
   (setq-default truncate-lines 1)
 

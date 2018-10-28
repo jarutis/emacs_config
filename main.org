@@ -2,11 +2,9 @@
 
 Inspired by https://gist.github.com/saulius/b9f8b784dd3350be3a04c0d932f6087e
 
-* Introduction
-** Package management
+* Package management
 
-Uses Emacs [[https://github.com/raxod502/straight.el][straight.el]] in combination 
-with [[https://github.com/jwiegley/use-package][use-package]].
+Uses Emacs [[https://github.com/raxod502/straight.el][straight.el]] in combination with [[https://github.com/jwiegley/use-package][use-package]].
 
 Bootstrap straight.el
 
@@ -33,7 +31,21 @@ Bootstrap straight.el
     (load bootstrap-file nil 'nomessage))
 #+END_SRC
 
-Setup basic path related config variables
+Integrate straight with use-package.
+
+#+BEGIN_SRC emacs-lisp
+  (straight-use-package 'use-package)
+
+  ;; Always ensure and defer
+  (setq use-package-always-ensure t)
+  (setq use-package-always-defer t)
+
+  (use-package no-littering
+    :straight t
+    :demand t)
+#+END_SRC
+
+Setup basic path related config variables.
 
 #+BEGIN_SRC emacs-lisp
   (defvar config-dir user-emacs-directory
@@ -48,7 +60,7 @@ Setup basic path related config variables
 
 #+END_SRC
 * Core modules
-** Helpers
+** Functions
 Open this file
 #+BEGIN_SRC emacs-lisp
   (defun open-config-file ()
@@ -57,87 +69,93 @@ Open this file
     (find-file (concat config-dir "main.org")))
 #+END_SRC
 ** System
-
+UTF-8 all the things.
 #+BEGIN_SRC emacs-lisp
-  ;; UTF-8 all the things
   (set-language-environment "UTF-8")
   (prefer-coding-system 'utf-8-unix)
   (set-terminal-coding-system 'utf-8)
   (set-keyboard-coding-system 'utf-8)
   (set-buffer-file-coding-system 'utf-8)
   (set-default-coding-systems 'utf-8)
+#+END_SRC
 
-  ;; Do not convert spaces to tabs
-  (setq-default indent-tabs-mode nil)
-
-  ;; Disable menu bar
-  (menu-bar-mode -1)
-
-  ;; store all backup and autosave files in the tmp dir
+Store all backup and autosave files in the tmp dir.
+#+BEGIN_SRC emacs-lisp
   (setq backup-directory-alist
         `((".*" . ,temporary-file-directory)))
   (setq auto-save-file-name-transforms
         `((".*" ,temporary-file-directory t)))
+#+END_SRC
 
-  ;; do not create symbolic lock files
-  ;; http://stackoverflow.com/questions/5738170/why-does-emacs-create-temporary-symbolic-links-for-modified-files/12974060#12974060
+Do not create [[http://stackoverflow.com/questions/5738170/why-does-emacs-create-temporary-symbolic-links-for-modified-files/12974060#12974060][symbolic lock files]].
+#+BEGIN_SRC emacs-lisp
   (setq create-lockfiles nil)
+#+END_SRC
 
-  ;; Make backups of files, even when they're in version control
+Make backups of files, even when they're in version control.
+#+BEGIN_SRC emacs-lisp
   (setq vc-make-backup-files t)
+#+END_SRC
 
-  ;; turn off wordwrap
-  (setq-default truncate-lines 1)
-
-  ;; Do not really want to type yes or no each time, so:
-  ;; yes/no => y/n
+Do not really want to type yes or no each time, so: yes/no => y/n.
+#+BEGIN_SRC emacs-lisp
   (defalias 'yes-or-no-p 'y-or-n-p)
+#+END_SRC
 
-  ;; Use text-mode for unknown files
-  ;; from https://www.gnu.org/software/emacs/manual/html_node/emacs/Major-Modes.html
-  (setq-default major-mode 'text-mode)
-
-  (setq
-   require-final-newline t                ;auto add newline at the end of file
-   default-major-mode 'text-mode          ;use text mode per default
-   history-length 250                     ;default is 30
-   tab-always-indent 'complete            ;try to complete before identing
-   indent-line-function 'indent-relative-maybe
-   confirm-nonexistent-file-or-buffer nil ;don't ask to create a buffer
-   recentf-max-saved-items 5000           ;same up to 5000 recent files
-   kill-ring-max 5000                     ;truncate kill ring after 5000 entries
-   mark-ring-max 5000)                    ;truncate mark ring after 5000 entries
-
-  ;; auto refresh buffers
-  (global-auto-revert-mode 1)
-  ;; also auto refresh dired, but be quiet about it
-  (setq global-auto-revert-non-file-buffers t)
-  (setq auto-revert-verbose nil)
-
-  ;; No vc backends. I only use git with magit
+No vc backends. I only use git with magit.
+#+BEGIN_SRC emacs-lisp
   (setq vc-handled-backends nil)
+#+END_SRC
 
-
-  ;; No bell rings
+No bell rings.
+#+BEGIN_SRC emacs-lisp
   (setq ring-bell-function 'ignore)
 #+END_SRC
 
-** Package management
-
+Don't ask to create a buffer.
 #+BEGIN_SRC emacs-lisp
-  (straight-use-package 'use-package)
-
-  ;; Always ensure and defer
-  (setq use-package-always-ensure t)
-  (setq use-package-always-defer t)
-
-  (use-package no-littering
-    :straight t
-    :demand t)
+  (setq confirm-nonexistent-file-or-buffer nil)
+#+END_SRC
+** UI
+Remove noise.
+#+BEGIN_SRC emacs-lisp
+  (scroll-bar-mode 0)
+  (menu-bar-mode -1)
 #+END_SRC
 
-** Key mapping setup
+Use a nice looking theme.
+#+BEGIN_SRC emacs-lisp
+  (use-package zenburn-theme
+    :straight t
+    :init
+    (load-theme 'zenburn t))
+#+END_SRC
 
+Borrow Spacemacs modeline.
+#+BEGIN_SRC emacs-lisp
+  (use-package spaceline
+    :straight t
+    :init
+    (require 'spaceline-config)
+    (spaceline-toggle-minor-modes-off)
+    (spaceline-toggle-workspace-number-off)
+    (spaceline-toggle-window-number-off)
+    (spaceline-toggle-anzu-off)
+    (spaceline-toggle-purpose-off)
+    (spaceline-toggle-buffer-position-off)
+    (spaceline-toggle-hud-off)
+    (spaceline-spacemacs-theme))
+#+END_SRC
+
+Interactively highlight which buffer is active by dimming the others.
+#+BEGIN_SRC emacs-lisp
+  (use-package dimmer
+    :straight t
+    :init
+    (setq dimmer-percent 0.1)
+    (dimmer-activate))
+#+END_SRC
+** Key mapping setup
 #+BEGIN_SRC emacs-lisp
   (use-package which-key
     :straight t
@@ -158,7 +176,7 @@ Open this file
 
   (use-package general
     :straight t
-    :init 
+    :init
     (general-evil-setup t)
     (general-define-key
      :prefix jj-leader
@@ -166,6 +184,7 @@ Open this file
      "fed" 'open-config-file
      "qq" 'save-buffers-kill-terminal
      "fs" 'save-buffer
+     "ff" 'find-file
      "bd" 'kill-this-buffer
      "TAB" 'previous-buffer
      "bn" 'next-buffer
@@ -238,6 +257,40 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
 #+END_SRC
 ** Editor
 
+Do not convert spaces to tabs
+#+BEGIN_SRC emacs-lisp
+  (setq-default indent-tabs-mode nil)
+#+END_SRC
+
+Turn off wordwrap
+#+BEGIN_SRC emacs-lisp
+  (setq-default truncate-lines 1)
+#+END_SRC
+
+Auto add newline at the end of file.
+#+BEGIN_SRC emacs-lisp
+  (setq require-final-newline t)
+#+END_SRC
+
+Increase history sizes.
+#+BEGIN_SRC emacs-lisp
+  (setq
+   history-length 250                     ;default is 30
+   kill-ring-max 5000                     ;truncate kill ring after 5000 entries
+   mark-ring-max 5000)                    ;truncate mark ring after 5000 entries
+#+END_SRC
+
+Use TAB for completion.
+#+BEGIN_SRC emacs-lisp
+  (setq tab-always-indent 'complete)
+#+END_SRC
+
+[[https://www.gnu.org/software/emacs/manual/html_node/elisp/Relative-Indent.html][Indentation Relative to Previous Lines]]. Indents the current line like the previous nonblank line
+#+BEGIN_SRC emacs-lisp
+  (setq indent-line-function 'indent-relative-maybe)
+#+END_SRC
+
+Make clipboard work for Mac
 #+BEGIN_SRC emacs-lisp
   (use-package pbcopy
     :straight t
@@ -245,48 +298,40 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
     :init (turn-on-pbcopy))
 #+END_SRC
 
-#+BEGIN_SRC emacs-lisp
-  (use-package nlinum
-    :straight t
-    :init
-    (setq linum-format "%d ")
-    (nmap :prefix jj-leader
-      "t" '(:ignore t :which-key "toggle")
-      "t l" '(linum-mode :which-key "line numbers")
-      "t e" '(flycheck-mode :which-key "linting")))
-#+END_SRC
-
+Visualize blanks (TAB, (HARD) SPACE and NEWLINE).
 #+BEGIN_SRC emacs-lisp
   (use-package whitespace
     :straight t
     :demand t
     :diminish global-whitespace-mode
+    :hook (prog-mode . whitespace-mode)
     :init
     (nmap :prefix jj-leader
       "t w" 'whitespace-mode)
     :config
-    (setq tab-width 2)
-    (setq indent-tabs-mode nil)
-
     (setq whitespace-style '(face empty tabs lines-tail trailing))
-    (setq whitespace-line-column 80)
+    (setq whitespace-line-column 80))
+#+END_SRC
 
-    (add-hook 'prog-mode-hook 'whitespace-mode))
-
+#+BEGIN_SRC emacs-lisp
   (use-package ws-butler
     :straight t
     :demand t
     :diminish ws-butler-mode
     :config
     (add-hook 'prog-mode-hook 'ws-butler-mode))
+#+END_SRC
 
+#+BEGIN_SRC emacs-lisp
   (use-package smex
     :straight t
     :demand t
     :bind (("M-x" . 'smex))
     :config
     (smex-initialize))
+#+END_SRC
 
+#+BEGIN_SRC emacs-lisp
   (use-package expand-region
     :straight t
     :init
@@ -297,7 +342,9 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
     :config
     (setq expand-region-contract-fast-key "v"
           expand-region-reset-fast-key "r"))
+#+END_SRC
 
+#+BEGIN_SRC emacs-lisp
   (use-package rainbow-delimiters
     :straight t
     :hook (prog-mode . rainbow-delimiters-mode))
@@ -310,7 +357,9 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
 
     (nmap
       "g c" '(evilnc-comment-or-uncomment-lines :which-key "Comment/uncomment lines")))
+#+END_SRC
 
+#+BEGIN_SRC emacs-lisp
   (use-package dumb-jump
     :straight t
     :general
@@ -323,7 +372,9 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
      "jb" 'dumb-jump-back)
     :custom
     (dumb-jump-selector 'ivy))
+#+END_SRC
 
+#+BEGIN_SRC emacs-lisp
   (use-package avy
     :straight t
     :init
@@ -331,55 +382,31 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
       "SPC" 'avy-goto-char)
     (nmap :prefix jj-leader
       "SPC" 'avy-goto-char))
-
-  ;; configuration
-  ;; auto refresh buffers
-  (global-auto-revert-mode 1)
-  ;; also auto refresh dired, but be quiet about it
-  (setq global-auto-revert-non-file-buffers t)
-  (setq auto-revert-verbose nil)
-  ;;(require 'saveplace)
-  ;;(setq-default save-place t)
-  ;;(setq save-place-file (expand-file-name ".places" config-dir))
 #+END_SRC
 
 ** Autocompletion
-
 #+BEGIN_SRC emacs-lisp
   (use-package company
     :straight t
     :demand t
     :diminish company-mode
+    :hook (after-init . global-company-mode)
     :config
+    (setq company-tooltip-align-annotations t) ; aligns annotation to the right
     (setq company-idle-delay 0.5)
     (setq company-tooltip-limit 10)
     (setq company-minimum-prefix-length 2)
     ;; invert the navigation direction if the the completion popup-isearch-match
     ;; is displayed on top (happens near the bottom of windows)
-    (setq company-tooltip-flip-when-above t)
-
-    (add-hook 'text-mode-hook 'company-mode)
-    (add-hook 'prog-mode-hook 'company-mode))
+    (setq company-tooltip-flip-when-above t))
 #+END_SRC
-   
 ** Syntax checkers and linters
-
 #+BEGIN_SRC emacs-lisp
-  (defun my/use-eslint-from-node-modules ()
-    (let* ((root (locate-dominating-file
-                  (or (buffer-file-name) default-directory)
-                  "node_modules"))
-           (eslint (and root
-                        (expand-file-name "node_modules/eslint/bin/eslint.js"
-                                          root))))
-      (when (and eslint (file-executable-p eslint))
-        (setq-local flycheck-javascript-eslint-executable eslint))))
-
   (use-package flycheck
     :straight t
     :demand t
     :commands (flycheck-mode flycheck-list-errors flycheck-buffer)
-    :hook (flycheck-mode . my/use-eslint-from-node-modules)
+    :hook (prog-mode . global-flycheck-mode)
     :init
     (nmap
       "] e" 'flycheck-next-error
@@ -391,15 +418,64 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
       "e v" '(flycheck-verify-setup :which-key "verify linter setup")
       "e l" '(flycheck-list-errors :which-key "list-errors"))
     :config
-    (setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc))
-    ;; Emacs feels snappier without checks on idle/change
-    (setq flycheck-check-syntax-automatically '(save mode-enabled))
-
-    (global-flycheck-mode 1))
+    (setq flycheck-highlighting-mode 'lines))
 #+END_SRC
+** Ivy
+#+BEGIN_SRC emacs-lisp
+  (use-package ivy
+    :straight t
+    :diminish ivy-mode
+    :hook (after-init . ivy-mode)
+    :config
+    (setq ivy-use-virtual-buffers t
+          ivy-count-format "(%d/%d) "
+          ivy-wrap t
+          ivy-virtual-abbreviate 'full
+          ivy-initial-inputs-alist nil
+          ivy-use-selectable-prompt t))
 
+  (use-package counsel
+    :straight t
+    :diminish counsel-mode
+    :commands counsel-describe-face
+    :hook (ivy-mode . counsel-mode)
+    :general
+    ([remap apropos]                  'counsel-apropos)
+    ([remap bookmark-jump]            'counsel-bookmark)
+    ([remap describe-face]            'counsel-describe-face)
+    ([remap describe-function]        'counsel-describe-function)
+    ([remap describe-variable]        'counsel-describe-variable)
+    ([remap execute-extended-command] 'counsel-M-x)
+    ([remap find-file]                'counsel-find-file)
+    ([remap find-library]             'counsel-find-library)
+
+    ([remap info-lookup-symbol]       'counsel-info-lookup-symbol)
+    ([remap imenu]                    'counsel-imenu)
+    ([remap recentf-open-files]       'counsel-recentf)
+    ([remap org-capture]              'counsel-org-capture)
+    ([remap swiper]                   'counsel-grep-or-swiper))
+
+  (use-package swiper
+    :straight t
+    :after ivy
+    :bind ("C-s" . swiper)
+    :config
+    (setq swiper-action-recenter t))
+
+  (use-package ivy-hydra
+    :straight t
+    :after ivy
+    :commands (ivy-dispatching-done-hydra ivy--matcher-desc))
+
+  (use-package ivy-rich
+    :straight t
+    :after ivy
+    :init (ivy-rich-mode 1)
+    :hook (ivy-rich-mode . (lambda ()
+                             (setq ivy-virtual-abbreviate
+                                   (or (and ivy-rich-mode 'abbreviate) 'name)))))
+#+END_SRC
 ** Project management
-
 #+BEGIN_SRC emacs-lisp
   (use-package projectile
     :straight t
@@ -428,9 +504,7 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
     :config
     (counsel-projectile-mode))
 #+END_SRC
-
 ** Git
-
 #+BEGIN_SRC emacs-lisp
   (use-package magit
     :straight t
@@ -464,108 +538,101 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
        `git-timemachine-mode'."
        (evil-local-mode (if git-timemachine-mode -1 1))))
 #+END_SRC
-** Ivy
-
+* Languages
+** Language Server Protocol
+  For majority of programming languages we will use [[https://langserver.org][Language Server Protocol]]. 
 #+BEGIN_SRC emacs-lisp
-  (use-package ivy
+  (use-package lsp-mode
     :straight t
-    :diminish ivy-mode
-    :init
-    (nmap :prefix jj-leader
-      "s s" '(swiper :which-key "swiper")
-      "f f" '(counsel-find-file :which-key "find file in current dir")
-      "/" '(counsel-rg :which-key "find in project"))
+    :diminish lsp-mode
     :config
-    (setq ivy-use-virtual-buffers t)
-    (require 'counsel)
-    (ivy-mode 1))
+    (setq lsp-inhibit-message t
+                  lsp-message-project-root-warning t)
+    (require 'lsp-imenu)
+    (add-hook 'lsp-after-open-hook 'lsp-enable-imenu)
+    )
+
+  (use-package lsp-ui
+    :straight t
+    :bind (:map lsp-ui-mode-map
+                ([remap xref-find-definitions] . lsp-ui-peek-find-definitions)
+                ([remap xref-find-references] . lsp-ui-peek-find-references))
+    :hook (lsp-mode . lsp-ui-mode))
+
+  (use-package company-lsp
+    :straight t
+    :defines company-backends
+    :init (push 'company-lsp company-backends)
+    :after company)
 #+END_SRC
-** UI
-
+** C++
+For C++ [[https://github.com/MaskRay/ccls][ccls]] is used.
 #+BEGIN_SRC emacs-lisp
-  (use-package zenburn-theme
-    :straight t
-    :init
-    (load-theme 'zenburn t))
+  (use-package c++-mode
+    :mode ("\\.h\\'" . c++-mode))
 
-  (use-package spaceline
-    :straight t
-    :init
-    (require 'spaceline-config)
-    (spaceline-toggle-minor-modes-off)
-    (spaceline-toggle-workspace-number-off)
-    (spaceline-toggle-window-number-off)
-    (spaceline-toggle-anzu-off)
-    (spaceline-toggle-purpose-off)
-    (spaceline-toggle-buffer-position-off)
-    (spaceline-toggle-hud-off)
-    (spaceline-spacemacs-theme))
-
-  (use-package dimmer
-    :straight t
-    :init
-    (setq dimmer-percent 0.1)
-    (dimmer-activate))
-#+END_SRC
-* Modules
-** Org
-
-#+BEGIN_SRC emacs-lisp
-  (use-package org
-    :custom
-      (org-directory "~/Dropbox/org")
-      (org-default-notes-file (concat org-directory "/notes.org"))
+  (use-package ccls
+    :straight (:host github :repo "MaskRay/emacs-ccls")
+    :commands lsp-ccls-enable
     :hook
-      (org-babel-after-execute . org-redisplay-inline-images)
+    ((c-mode c++-mode) . lsp-ccls-enable)
     :config
-    (load-file (concat config-custom-package-dir "/ox-confluence.el"))
-    (require 'ox-confluence nil t)
-      (org-babel-do-load-languages
-       'org-babel-load-languages
-       '((ruby       . t)
-         (latex     . t)
-         (scala     . t)
-         (python    . t)
-         (R         . t)
-         (C         . t))))
+    (setq ccls-executable "/usr/local/bin/ccls"))
 
-  (use-package evil-org
+  ;; clang-format
+  (use-package clang-format
     :straight t
-    :after org
+    :commands clang-format-buffer
+    :hook ((c-mode c++-mode) . (lambda()
+                                 (add-hook 'before-save-hook
+                                           'clang-format-buffer nil t))))
+#+END_SRC
+** R
+[[https://ess.r-project.org][ESS]] is an amazing mode for R development.
+#+BEGIN_SRC emacs-lisp
+  (defun spacemacs/ess-start-repl ()
+    "Start a REPL corresponding to the ess-language of the current buffer."
+    (interactive)
+    (cond
+     ((string= "S" ess-language) (call-interactively 'R))
+     ((string= "STA" ess-language) (call-interactively 'stata))
+     ((string= "SAS" ess-language) (call-interactively 'SAS))))
+
+  (use-package ess
+    :straight t
+    :ensure t
+    :pin melpa
+    :mode ("\\.r\\'" . R-mode)
+    :custom
+    (ess-history-file "/Users/jj/.RHistory")
+    (ess-insert-assign nil)
+    (flycheck-lintr-linters "default_linters[-15]")
+    (ess-default-style 'RStudio)
+    (inferior-R-program-name "/usr/local/bin/R")
+    (ess-toggle-underscore nil)
     :general
-    (:keymaps 'scala-mode-map
-     :states 'normal
-     :prefix jj-leader
-     "'" 'org-edit-special)
-    :config
-    (setq org-table-number-regexp "never")
-    (setq org-capture-templates
-          '(("t" "Todo" entry (file+headline "~/org/gtd.org" "Tasks")
-             "* TODO %?\n  %i\n  %a")
-            ("j" "Journal" entry (file+datetree "~/org/journal.org")
-             "* %?\nEntered on %U\n  %i\n  %a")))
-    (add-hook 'org-mode-hook 'evil-org-mode)
-    (add-hook 'evil-org-mode-hook
-              (lambda ()
-                (evil-org-set-key-theme))))
-#+END_SRC
-*** Github Flavored Markdown
-#+BEGIN_SRC emacs-lisp
-  (use-package ox-gfm
-    :straight t
-    :after org)
-
-  (eval-after-load "org" '(require 'ox-gfm nil t))
-#+END_SRC
-*** Confluence
-#+BEGIN_SRC emacs-lisp
-  (when (not (file-exists-p (expand-file-name "ox-confluence.el" config-custom-package-dir)))
-    (url-retrieve
-     "https://raw.githubusercontent.com/emacsmirror/org/master/contrib/lisp/ox-confluence.el"
-     (lambda (s)
-       (re-search-forward "\r?\n\r?\n") ;; skip the headers
-       (write-region (point) (point-max) (expand-file-name "ox-confluence.el" config-custom-package-dir)))))
-
+    (:keymaps 'ess-mode-map
+     :states '(normal visual)
+     :prefix jj-mode
+     ;; noweb
+     "cC" 'ess-eval-chunk-and-go
+     "cc" 'ess-eval-chunk
+     "cd" 'ess-eval-chunk-and-step
+     "cm" 'ess-noweb-mark-chunk
+     "cN" 'ess-noweb-previous-chunk
+     "cn" 'ess-noweb-next-chunk
+     ;; REPL
+     "si" 'spacemacs/ess-start-repl
+     "sB" 'ess-eval-buffer-and-go
+     "sb" 'ess-eval-buffer
+     "sD" 'ess-eval-function-or-paragraph-and-step
+     "sd" 'ess-eval-region-or-line-and-step
+     "sL" 'ess-eval-line-and-go
+     "sl" 'ess-eval-line
+     "sR" 'ess-eval-region-and-go
+     "sr" 'ess-eval-region
+     "sT" 'ess-eval-function-and-go
+     "st" 'ess-eval-function))
 #+END_SRC
 ** Scala
 
@@ -581,6 +648,10 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
     :after scala-mode
     :commands (ensime ensime-mode ensime-scala-mode-hook)
     :general
+    (:keymaps 'ensime-mode-map
+     :states '(normal visual insert)
+     "M-." 'dumb-jump-go
+     "M-," 'dumb-jump-back)
     (:keymaps 'scala-mode-map
      :states '(normal visual)
      :prefix jj-mode
@@ -650,8 +721,6 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
      "si" 'ensime-inf-switch
      "sr" 'ensime-inf-eval-region
      "sR" 'ensime-inf-eval-region-switch
-     "ss" 'sbt-send-region
-     "sS" 'sbt-paste-region
 
      "yT" 'scala/yank-type-at-point-full-name
      "yt" 'scala/yank-type-at-point
@@ -669,154 +738,4 @@ Evil [[https://github.com/gabesoft/evil-mc][multi-cursor]]
     ;; Fix void-variable imenu-auto-rescan error caused by `ensime--setup-imenu'
     ;; trying to make imenu variables buffer local before imenu is loaded.
     (require 'imenu))
-#+END_SRC
-      
-** GNU Plot
-#+BEGIN_SRC emacs-lisp
-  (use-package gnuplot-mode
-    :straight t
-    :mode ("\\.\\(gp\\|gnuplot\\)$" . gnuplot-mode)
-    :custom (gnuplot-program "/usr/local/bin/gnuplot"))
-#+END_SRC
-
-** YAML
-#+BEGIN_SRC emacs-lisp
-  (use-package yaml-mode
-    :straight t
-    :mode ("\\.yml\\'" . yaml-mode))
-#+END_SRC
-** HTML
-#+BEGIN_SRC emacs-lisp
-  (use-package web-mode
-    :straight t
-    :mode ("\\.html?\\'" . web-mode)
-    :custom
-    (web-mode-enable-auto-closing t "Complete html tags on </"))
-
-  (use-package company-web
-    :straight t
-    :init
-    (add-to-list 'company-backends 'company-web-html))
-#+END_SRC
-
-** Graphviz
-#+BEGIN_SRC emacs-lisp
-  (use-package graphviz-dot-mode
-    :straight t)
-#+END_SRC
-   
-** Rest
-#+BEGIN_SRC emacs-lisp
-  (use-package restclient
-    :straight t
-    :mode ("\\.http\\'" . restclient-mode))
-#+END_SRC
-** R
-#+BEGIN_SRC emacs-lisp
-  (defun spacemacs/ess-start-repl ()
-    "Start a REPL corresponding to the ess-language of the current buffer."
-    (interactive)
-    (cond
-     ((string= "S" ess-language) (call-interactively 'R))
-     ((string= "STA" ess-language) (call-interactively 'stata))
-     ((string= "SAS" ess-language) (call-interactively 'SAS))))
-
-  (use-package ess
-    :straight t
-    :ensure t
-    :pin melpa
-    :mode ("\\.r\\'" . R-mode)
-    :custom
-    (ess-history-file "/Users/jj/.RHistory")
-    (ess-smart-S-assign-key "~")
-    (flycheck-lintr-linters "default_linters[-15]")
-    :general
-    (:keymaps 'ess-mode-map
-     :states '(normal visual)
-     :prefix jj-mode
-     ;; noweb
-     "cC" 'ess-eval-chunk-and-go
-     "cc" 'ess-eval-chunk
-     "cd" 'ess-eval-chunk-and-step
-     "cm" 'ess-noweb-mark-chunk
-     "cN" 'ess-noweb-previous-chunk
-     "cn" 'ess-noweb-next-chunk
-     ;; REPL
-     "si" 'spacemacs/ess-start-repl
-     "sB" 'ess-eval-buffer-and-go
-     "sb" 'ess-eval-buffer
-     "sD" 'ess-eval-function-or-paragraph-and-step
-     "sd" 'ess-eval-region-or-line-and-step
-     "sL" 'ess-eval-line-and-go
-     "sl" 'ess-eval-line
-     "sR" 'ess-eval-region-and-go
-     "sr" 'ess-eval-region
-     "sT" 'ess-eval-function-and-go
-     "st" 'ess-eval-function)
-    :config
-    (setq ess-default-style 'RStudio))
-#+END_SRC
-   
-** GNU APL
-#+BEGIN_SRC emacs-lisp
-  (use-package gnu-apl-mode
-    :straight t
-    :mode ("\\.apl\\'" . gnu-apl-mode))
-#+END_SRC
-** GNU Octave
-#+BEGIN_SRC emacs-lisp
-  (use-package octave
-    :mode ("\\.m\\'" . octave-mode)
-    :general
-    (:keymaps 'octave-mode-map
-     :states '(normal visual)
-     :prefix jj-mode
-     "si" 'run-octave
-     "sr" 'octave-send-region
-     "sl" 'octave-send-line
-    ))
-#+END_SRC
-   
-** LSP Mode
-#+BEGIN_SRC emacs-lisp
-  (use-package lsp-mode
-    :ensure t
-    :config
-
-    (require 'lsp-imenu)
-    (add-hook 'lsp-after-open-hook 'lsp-enable-imenu)  
-    ;; get lsp-python-enable defined
-    ;; NB: use either projectile-project-root or ffip-get-project-root-directory
-    ;;     or any other function that can be used to find the root directory of a project
-    (lsp-define-stdio-client lsp-python "python"
-                             #'projectile-project-root
-                             '("pyls"))
-
-    (add-hook 'python-mode-hook
-              (lambda ()
-                (lsp-python-enable)))
-
-    ;; lsp extras
-    (use-package lsp-ui
-      :ensure t
-      :config
-      (setq lsp-ui-sideline-ignore-duplicate t)
-      (add-hook 'lsp-mode-hook 'lsp-ui-mode))
-
-    (use-package company-lsp
-      :config
-      (push 'company-lsp company-backends))
-
-    ;; NB: only required if you prefer flake8 instead of the default
-    ;; send pyls config via lsp-after-initialize-hook -- harmless for
-    ;; other servers due to pyls key, but would prefer only sending this
-    ;; when pyls gets initialised (:initialize function in
-    ;; lsp-define-stdio-client is invoked too early (before server
-    ;; start)) -- cpbotha
-    (defun lsp-set-cfg ()
-      (let ((lsp-cfg `(:pyls (:configurationSources ("flake8")))))
-        ;; TODO: check lsp--cur-workspace here to decide per server / project
-        (lsp--set-configuration lsp-cfg)))
-
-    (add-hook 'lsp-after-initialize-hook 'lsp-set-cfg))
 #+END_SRC

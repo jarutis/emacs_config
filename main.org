@@ -739,3 +739,152 @@ For C++ [[https://github.com/MaskRay/ccls][ccls]] is used.
     ;; trying to make imenu variables buffer local before imenu is loaded.
     (require 'imenu))
 #+END_SRC
+* GTD
+My GTD setup is based on a nice [[https://emacs.cafe/emacs/orgmode/gtd/2017/06/30/orgmode-gtd.html][article from emacs cafe]].
+
+Lets setup relevant files.
+
+- inbox.org: where I collect everything;
+- projects.org: where I put all my projects;
+- someday.org: All inactive tasks that I might do at some point in the future, but don't want to see all the time;
+- tickler.org: I put entries in this file with a timestamp to get reminded at the right moment.
+
+#+BEGIN_SRC emacs-lisp
+  (defvar gtd-dir "~/Dropbox/Notes/gtd_0.2"
+    "The dir where GTD lives.")
+  (defvar gtd-inbox (expand-file-name "inbox.org" gtd-dir)
+    "Collect all incoming tasks here.")
+  (defvar gtd-projects (expand-file-name "projects.org" gtd-dir)
+    "Tasks organized into projects are store here.")
+  (defvar gtd-someday (expand-file-name "someday.org" gtd-dir)
+    "All inactive tasks that I might do at some point in the future.")
+  (defvar gtd-tickler (expand-file-name "tickler.org" gtd-dir)
+    "Scheduled tasks go here.")
+#+END_SRC
+
+Add files to agenda.
+#+BEGIN_SRC emacs-lisp
+  (setq org-agenda-files '(gtd-inbox gtd-projects gtd-tickler))
+#+END_SRC
+
+Org capture templates.
+#+BEGIN_SRC emacs-lisp
+  (setq org-capture-templates '(("t" "Todo [inbox]" entry
+                                 (file+headline gtd-inbox "Tasks")
+                                 "* TODO %i%?")
+                                ("T" "Tickler" entry
+                                 (file+headline gtd-tickler "Tickler")
+                                 "* %i%? \n %U")))
+#+END_SRC
+
+My inbox is then processed and emptied daily. When processing the
+inbox, I refile each entry that is actionable and belongs to a project
+using C-c C-w, moving the entry to the appropriate place. If need be,
+I create a new project out of it.
+#+BEGIN_SRC emacs-lisp
+  (setq org-refile-targets '((gtd-projects :maxlevel . 3)
+                             (gtd-someday :level . 1)
+                             (gtd-tickler :maxlevel . 2)))
+#+END_SRC
+
+** Tags
+Tagging is done using C-c C-c on a headline, whether it's a project or
+action. I use tags for several purposes:
+
+- Regular categories, like :emacs: or *:writing:*;
+- Tags that link to people, like *:daniel:*;
+- GTD contexts.
+
+The following context are suggested: *@home*, *@office*,
+*@travelling*, *@phone*, *@email*, *@errands*.
+
+** ToDo keywords
+I put a todo keyword in all project entries. I think I use fairly
+regular todo keywords: *TODO*, *WAITING*, *DONE* and *CANCELLED* mostly. The
+first two for are used for incomplete states, and the last two for
+completed states.
+
+#+BEGIN_SRC emacs-lisp
+(setq org-todo-keywords '((sequence "TODO(t)" "WAITING(w)" "|" "DONE(d)" "CANCELLED(c)")))
+#+END_SRC
+
+When on a headline, press C-c C-t to set the TODO keyword.
+
+** Timestamps, scheduling & deadlines
+I tend to avoid using timestamps in my projects as much as
+possible. The reason is simple: unless an entry is an appointment (to
+the dentist for instance) or has a fixed deadline (a release scheduled
+with a customer), I should decide what to work on depending on the
+current context (among other things). This also keeps my agenda clean,
+free of any fake or self-imposed deadline or schedule.
+
+If realy needed, press C-c C-s on an entry, and enter the date and/or
+time. To add a deadline, press C-c C-d.
+
+** Filtering projects & actions
+
+I use custom agenda commands mostly to get an overview of actions by
+context or tag. 
+
+Following the GTD principle, what I usually want is to only show the
+first action to be done (or next action) for each project with the
+@office tag.
+
+That can be achieved using a skipping condition:
+#+BEGIN_SRC emacs-lisp
+  (setq org-agenda-custom-commands 
+        '(("o" "At the office" tags-todo "@office"
+           ((org-agenda-overriding-header "Office")
+            (org-agenda-skip-function #'my-org-agenda-skip-all-siblings-but-first)))))
+
+  (defun my-org-agenda-skip-all-siblings-but-first ()
+    "Skip all but the first non-done entry."
+    (let (should-skip-entry)
+      (unless (org-current-is-todo)
+        (setq should-skip-entry t))
+      (save-excursion
+        (while (and (not should-skip-entry) (org-goto-sibling t))
+          (when (org-current-is-todo)
+            (setq should-skip-entry t))))
+      (when should-skip-entry
+        (or (outline-next-heading)
+            (goto-char (point-max))))))
+
+  (defun org-current-is-todo ()
+    (string= "TODO" (org-get-todo-state)))
+#+END_SRC
+
+** The "Someday/Maybe" list
+Did you notice that someday.org is not part of the agenda files set in
+org-agenda-files?
+
+That's because I do not want to see any entry from this file appearing
+in my agenda buffers, unless I'm doing my weekly review. That's
+exactly the purpose of the "Someday/Maybe" list.
+
+This file should be reviewed once a week as part of the weekly review
+(which I do this on Sunday evenings).
+
+During each weekly review, I move projects back and forth between the
+"active" state (in gtd.org) and "later" state (in someday.org).
+
+For instance, if a project has moved forward to a certain point, but I
+know that it will stall for a few weeks for some reason, I move it to
+someday.org. During a later weekly review, I'll move it back to
+gtd.org when it will become active again.
+
+To move projects around, I also use refiling.
+
+** The tickler
+Let's say you will have to pay a bill in a month. You need to write it
+down in your GTD if you don't want to miss the deadline. But you also
+don't want to be reminded of that each and every time you browse
+through your GTD projects: now is not the time to pay it.
+
+That's where the tickler kicks in: Add an entry to your tickler file
+with a timestamp, and forget about it!
+
+When time will come, the action will appear in your Org Agenda,
+reminding you of the bill you have to pay, and all you will have to do
+is moving it to your inbox. Until then, you can just focus on
+something else and free your mind from this task.

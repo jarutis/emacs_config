@@ -233,7 +233,7 @@ Interactively highlight which buffer is active by dimming the others.
 
   (use-package evil-collection
     :after evil
-    :straight (evil-collection 
+    :straight (evil-collection
                 :type git
                 :host github
                 :repo "jojojames/evil-collection")
@@ -493,7 +493,7 @@ Visualize blanks (TAB, (HARD) SPACE and NEWLINE).
           "p p" '(counsel-projectile-switch-project :which-key "other project")
           "p b" '(counsel-projectile-switch-to-buffer :which-key "buffer"))
     :config
-    (setq projectile-enable-caching t
+    (setq projectile-enable-caching nil
           projectile-completion-system 'ivy
           projectile-sort-order 'recentf)
 
@@ -538,9 +538,17 @@ Visualize blanks (TAB, (HARD) SPACE and NEWLINE).
        `git-timemachine-mode'."
        (evil-local-mode (if git-timemachine-mode -1 1))))
 #+END_SRC
+** Org
+#+BEGIN_SRC emacs-lisp
+  (use-package org
+    :bind (("C-c c" . org-capture)
+           ("C-c a" . org-agenda))
+    :config
+    (setq org-table-number-regexp "$a"))
+#+END_SRC
 * Languages
 ** Language Server Protocol
-  For majority of programming languages we will use [[https://langserver.org][Language Server Protocol]]. 
+  For majority of programming languages we will use [[https://langserver.org][Language Server Protocol]].
 #+BEGIN_SRC emacs-lisp
   (use-package lsp-mode
     :straight t
@@ -739,6 +747,26 @@ For C++ [[https://github.com/MaskRay/ccls][ccls]] is used.
     ;; trying to make imenu variables buffer local before imenu is loaded.
     (require 'imenu))
 #+END_SRC
+** Octave
+Matlab open-source
+#+BEGIN_SRC emacs-lisp
+  (use-package octave
+    :mode ("\\.m\\'" . octave-mode)
+    :general
+    (:keymaps 'octave-mode-map
+     :states '(normal visual)
+     :prefix jj-mode
+     "si" 'run-octave
+     "sr" 'octave-send-region
+     "sl" 'octave-send-line
+    ))
+#+END_SRC
+** HTTP
+#+BEGIN_SRC emacs-lisp
+  (use-package restclient
+    :straight t
+    :mode ("\\.http\\'" . restclient-mode))
+#+END_SRC
 * GTD
 My GTD setup is based on a nice [[https://emacs.cafe/emacs/orgmode/gtd/2017/06/30/orgmode-gtd.html][article from emacs cafe]].
 
@@ -760,11 +788,13 @@ Lets setup relevant files.
     "All inactive tasks that I might do at some point in the future.")
   (defvar gtd-tickler (expand-file-name "tickler.org" gtd-dir)
     "Scheduled tasks go here.")
+  (defvar my-journal (expand-file-name "journal.org" gtd-dir)
+    "Random notes go here.")
 #+END_SRC
 
 Add files to agenda.
 #+BEGIN_SRC emacs-lisp
-  (setq org-agenda-files '(gtd-inbox gtd-projects gtd-tickler))
+  (setq org-agenda-files (list gtd-inbox gtd-projects gtd-tickler))
 #+END_SRC
 
 Org capture templates.
@@ -774,7 +804,10 @@ Org capture templates.
                                  "* TODO %i%?")
                                 ("T" "Tickler" entry
                                  (file+headline gtd-tickler "Tickler")
-                                 "* %i%? \n %U")))
+                                 "* %i%? \n %U")
+                                ("j" "Journal" entry
+                                 (file+headline my-journal "Journal")
+                                 "* %?\nEntered on %U\n  %i\n  %a")))
 #+END_SRC
 
 My inbox is then processed and emptied daily. When processing the
@@ -824,7 +857,7 @@ time. To add a deadline, press C-c C-d.
 ** Filtering projects & actions
 
 I use custom agenda commands mostly to get an overview of actions by
-context or tag. 
+context or tag.
 
 Following the GTD principle, what I usually want is to only show the
 first action to be done (or next action) for each project with the
@@ -832,7 +865,7 @@ first action to be done (or next action) for each project with the
 
 That can be achieved using a skipping condition:
 #+BEGIN_SRC emacs-lisp
-  (setq org-agenda-custom-commands 
+  (setq org-agenda-custom-commands
         '(("o" "At the office" tags-todo "@office"
            ((org-agenda-overriding-header "Office")
             (org-agenda-skip-function #'my-org-agenda-skip-all-siblings-but-first)))))
@@ -852,6 +885,18 @@ That can be achieved using a skipping condition:
 
   (defun org-current-is-todo ()
     (string= "TODO" (org-get-todo-state)))
+#+END_SRC
+
+Setup other agenda windows that I expect to be usefull:
+#+BEGIN_SRC emacs-lisp
+  (setq org-agenda-custom-commands
+        '(("h" "Tasks to do at home" tags-todo "@home"
+           ((org-agenda-overriding-header "Home")
+            (org-agenda-skip-function #'my-org-agenda-skip-all-siblings-but-first)))))
+
+  (setq org-agenda-custom-commands
+        '(("e" "Go somethere do something" tags-todo "@errands"
+           ((org-agenda-overriding-header "Errands")))))
 #+END_SRC
 
 ** The "Someday/Maybe" list

@@ -9,26 +9,23 @@ Uses Emacs [[https://github.com/raxod502/straight.el][straight.el]] in combinati
 Bootstrap straight.el
 
 #+BEGIN_SRC emacs-lisp
-  (setq package-archives
+(require 'scroll-bar)
+(setq package-archives
         '(("gnu"              . "http://elpa.gnu.org/packages/")
           ("melpa-stable"     . "http://stable.melpa.org/packages/")
           ("melpa"            . "http://melpa.org/packages/")))
-
-  (setq debug-on-error t) ; for debug purpose
-
-  (setq straight-check-for-modifications 'never)
-
-  (let ((bootstrap-file (concat user-emacs-directory "straight/bootstrap.el"))
-        (bootstrap-version 2))
-    (unless (file-exists-p bootstrap-file)
-      (with-current-buffer
-          (url-retrieve-synchronously
-           "https://raw.githubusercontent.com/raxod502/straight.el/develop/install.el"
-           'silent 'inhibit-cookies)
-
-        (goto-char (point-max))
-        (eval-print-last-sexp)))
-    (load bootstrap-file nil 'nomessage))
+(defvar bootstrap-version)
+(let ((bootstrap-file
+       (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
+      (bootstrap-version 5))
+  (unless (file-exists-p bootstrap-file)
+    (with-current-buffer
+        (url-retrieve-synchronously
+         "https://raw.githubusercontent.com/raxod502/straight.el/develop/install.el"
+         'silent 'inhibit-cookies)
+      (goto-char (point-max))
+      (eval-print-last-sexp)))
+  (load bootstrap-file nil 'nomessage))
 #+END_SRC
 
 Integrate straight with use-package.
@@ -57,7 +54,6 @@ Setup basic path related config variables.
 
   (when (not (file-directory-p config-custom-package-dir))
     (make-directory config-custom-package-dir))
-
 #+END_SRC
 * Core modules
 ** Functions
@@ -385,7 +381,13 @@ Visualize blanks (TAB, (HARD) SPACE and NEWLINE).
 #+END_SRC
 
 ** Autocompletion
+
 #+BEGIN_SRC emacs-lisp
+  (use-package yasnippet
+    :straight t
+    :init
+    (yas-global-mode 1))
+
   (use-package company
     :straight t
     :demand t
@@ -547,389 +549,61 @@ Visualize blanks (TAB, (HARD) SPACE and NEWLINE).
     (setq org-table-number-regexp "$a"))
 #+END_SRC
 * Languages
-** Language Server Protocol
-  For majority of programming languages we will use [[https://langserver.org][Language Server Protocol]].
+** LSP
 #+BEGIN_SRC emacs-lisp
   (use-package lsp-mode
     :straight t
-    :diminish lsp-mode
-    :config
-    (setq lsp-inhibit-message t
-                  lsp-message-project-root-warning t)
-    (require 'lsp-imenu)
-    (add-hook 'lsp-after-open-hook 'lsp-enable-imenu)
-    )
-
-  (use-package lsp-ui
+    :commands lsp)
+  (use-package py-isort
     :straight t
-    :bind (:map lsp-ui-mode-map
-                ([remap xref-find-definitions] . lsp-ui-peek-find-definitions)
-                ([remap xref-find-references] . lsp-ui-peek-find-references))
-    :hook (lsp-mode . lsp-ui-mode))
-
-  (use-package company-lsp
-    :straight t
-    :defines company-backends
-    :init (push 'company-lsp company-backends)
-    :after company)
-#+END_SRC
-** C++
-For C++ [[https://github.com/MaskRay/ccls][ccls]] is used.
-#+BEGIN_SRC emacs-lisp
-  (use-package c++-mode
-    :mode ("\\.h\\'" . c++-mode))
-
+    :commands py-isort)
   (use-package ccls
-    :straight (:host github :repo "MaskRay/emacs-ccls")
-    :commands lsp-ccls-enable
-    :hook
-    ((c-mode c++-mode) . lsp-ccls-enable)
+    :straight t
     :config
-    (setq ccls-executable "/usr/local/bin/ccls"))
-
-  ;; clang-format
-  (use-package clang-format
-    :straight t
-    :commands clang-format-buffer
-    :hook ((c-mode c++-mode) . (lambda()
-                                 (add-hook 'before-save-hook
-                                           'clang-format-buffer nil t))))
+    (setq ccls-executable "ccls")
+    (setq lsp-prefer-flymake nil)
+    :hook ((c-mode c++-mode objc-mode) .
+           (lambda () (require 'ccls) (lsp))))
 #+END_SRC
-** R
-[[https://ess.r-project.org][ESS]] is an amazing mode for R development.
+** Markdown
 #+BEGIN_SRC emacs-lisp
-  (defun spacemacs/ess-start-repl ()
-    "Start a REPL corresponding to the ess-language of the current buffer."
-    (interactive)
-    (cond
-     ((string= "S" ess-language) (call-interactively 'R))
-     ((string= "STA" ess-language) (call-interactively 'stata))
-     ((string= "SAS" ess-language) (call-interactively 'SAS))))
-
-  (use-package ess
-    :straight t
-    :ensure t
-    :pin melpa
-    :mode ("\\.r\\'" . R-mode)
-    :custom
-    (ess-history-file "/Users/jj/.RHistory")
-    (ess-insert-assign nil)
-    (flycheck-lintr-linters "default_linters[-15]")
-    (ess-default-style 'RStudio)
-    (inferior-R-program-name "/usr/local/bin/R")
-    (ess-toggle-underscore nil)
-    :general
-    (:keymaps 'ess-mode-map
-     :states '(normal visual)
-     :prefix jj-mode
-     ;; noweb
-     "cC" 'ess-eval-chunk-and-go
-     "cc" 'ess-eval-chunk
-     "cd" 'ess-eval-chunk-and-step
-     "cm" 'ess-noweb-mark-chunk
-     "cN" 'ess-noweb-previous-chunk
-     "cn" 'ess-noweb-next-chunk
-     ;; REPL
-     "si" 'spacemacs/ess-start-repl
-     "sB" 'ess-eval-buffer-and-go
-     "sb" 'ess-eval-buffer
-     "sD" 'ess-eval-function-or-paragraph-and-step
-     "sd" 'ess-eval-region-or-line-and-step
-     "sL" 'ess-eval-line-and-go
-     "sl" 'ess-eval-line
-     "sR" 'ess-eval-region-and-go
-     "sr" 'ess-eval-region
-     "sT" 'ess-eval-function-and-go
-     "st" 'ess-eval-function))
+  (use-package vmd-mode
+    :straight t)
 #+END_SRC
-** Scala
-
+** Python
 #+BEGIN_SRC emacs-lisp
-  (use-package scala-mode
+  (use-package elpy
     :straight t
-    :mode "\\.s\\(cala\\|bt\\)$"
-    :config
-    (setq scala-indent:align-parameters t))
-
-  (use-package ensime
-    :straight (ensime :host github :branch "2.0" :repo "ensime/ensime-emacs")
-    :after scala-mode
-    :commands (ensime ensime-mode ensime-scala-mode-hook)
-    :general
-    (:keymaps 'ensime-mode-map
-     :states '(normal visual insert)
-     "M-." 'dumb-jump-go
-     "M-," 'dumb-jump-back)
-    (:keymaps 'scala-mode-map
-     :states '(normal visual)
-     :prefix jj-mode
-     "/"  'ensime-search
-     "'"  'ensime-inf-switch
-
-     "bc" 'ensime-sbt-do-compile
-     "bC" 'ensime-sbt-do-clean
-     "bi" 'ensime-sbt-switch
-     "bp" 'ensime-sbt-do-package
-     "br" 'ensime-sbt-do-run
-
-     "ct" 'ensime-typecheck-current-buffer
-     "cT" 'ensime-typecheck-all
-
-     "dA" 'ensime-db-attach
-     "db" 'ensime-db-set-break
-     "dB" 'ensime-db-clear-break
-     "dC" 'ensime-db-clear-all-breaks
-     "dc" 'ensime-db-continue
-     "di" 'ensime-db-step
-     "dn" 'ensime-db-next
-     "do" 'ensime-db-step-out
-     "dq" 'ensime-db-quit
-     "dr" 'ensime-db-run
-     "dt" 'ensime-db-backtrace
-     "dv" 'ensime-db-inspect-value-at-point
-
-     "ee" 'ensime-print-errors-at-point
-     "el" 'ensime-show-all-errors-and-warnings
-     "es" 'ensime-stacktrace-switch
-
-     "gp" 'ensime-pop-find-definition-stack
-     "gi" 'ensime-goto-impl
-     "gt" 'ensime-goto-test
-
-     "hh" 'ensime-show-doc-for-symbol-at-point
-     "hT" 'ensime-type-at-point-full-name
-     "ht" 'ensime-type-at-point
-     "hu" 'ensime-show-uses-of-symbol-at-point
-
-     "ii" 'ensime-inspect-type-at-point
-     "iI" 'ensime-inspect-type-at-point-other-frame
-     "ip" 'ensime-inspect-project-package
-
-     "nF" 'ensime-reload-open-files
-     "ns" 'ensime
-     "nS" 'ensime-gen-and-restart
-
-     "ra" 'ensime-refactor-add-type-annotation
-     "rd" 'ensime-refactor-diff-inline-local
-     "rD" 'ensime-undo-peek
-     "rf" 'ensime-format-source
-     "ri" 'ensime-refactor-diff-organize-imports
-     "rm" 'ensime-refactor-diff-extract-method
-     "rr" 'ensime-refactor-diff-rename
-     "rt" 'ensime-import-type-at-point
-     "rv" 'ensime-refactor-diff-extract-local
-
-     "ta" 'ensime-sbt-do-test-dwim
-     "tr" 'ensime-sbt-do-test-quick-dwim
-     "tt" 'ensime-sbt-do-test-only-dwim
-
-     "sa" 'ensime-inf-load-file
-     "sb" 'ensime-inf-eval-buffer
-     "sB" 'ensime-inf-eval-buffer-switch
-     "si" 'ensime-inf-switch
-     "sr" 'ensime-inf-eval-region
-     "sR" 'ensime-inf-eval-region-switch
-
-     "yT" 'scala/yank-type-at-point-full-name
-     "yt" 'scala/yank-type-at-point
-
-     "z"  'ensime-expand-selection-command
-     )
     :init
-    (setq ensime-startup-snapshot-notification nil
-          ensime-startup-notification nil
-          ensime-eldoc-hints 'all
-          flycheck-scalastyle-jar "/usr/local/Cellar/scalastyle/0.8.0/libexec/scalastyle_2.11-0.8.0-batch.jar"
-          flycheck-scalastylerc "/Users/jj/dev/dap/dwh/scalastyle_config.xml"
-          ensime-sem-high-faces '((implicitConversion nil) (implicitParams nil)))
+    (elpy-enable)
     :config
-    ;; Fix void-variable imenu-auto-rescan error caused by `ensime--setup-imenu'
-    ;; trying to make imenu variables buffer local before imenu is loaded.
-    (require 'imenu))
-#+END_SRC
-** Octave
-Matlab open-source
-#+BEGIN_SRC emacs-lisp
-  (use-package octave
-    :mode ("\\.m\\'" . octave-mode)
-    :general
-    (:keymaps 'octave-mode-map
-     :states '(normal visual)
-     :prefix jj-mode
-     "si" 'run-octave
-     "sr" 'octave-send-region
-     "sl" 'octave-send-line
-    ))
-#+END_SRC
-** HTTP
-#+BEGIN_SRC emacs-lisp
-  (use-package restclient
+    (setq python-shell-interpreter "ipython"
+          python-shell-interpreter-args "-i --simple-prompt")
+    )
+  (use-package py-isort
     :straight t
-    :mode ("\\.http\\'" . restclient-mode))
+    :commands py-isort)
 #+END_SRC
-* GTD
-My GTD setup is based on a nice [[https://emacs.cafe/emacs/orgmode/gtd/2017/06/30/orgmode-gtd.html][article from emacs cafe]].
-
-Lets setup relevant files.
-
-- inbox.org: where I collect everything;
-- projects.org: where I put all my projects;
-- someday.org: All inactive tasks that I might do at some point in the future, but don't want to see all the time;
-- tickler.org: I put entries in this file with a timestamp to get reminded at the right moment.
-
+** Dockerfile
 #+BEGIN_SRC emacs-lisp
-  (defvar gtd-dir "~/Dropbox/Notes/gtd_0.2"
-    "The dir where GTD lives.")
-  (defvar gtd-inbox (expand-file-name "inbox.org" gtd-dir)
-    "Collect all incoming tasks here.")
-  (defvar gtd-projects (expand-file-name "projects.org" gtd-dir)
-    "Tasks organized into projects are store here.")
-  (defvar gtd-someday (expand-file-name "someday.org" gtd-dir)
-    "All inactive tasks that I might do at some point in the future.")
-  (defvar gtd-tickler (expand-file-name "tickler.org" gtd-dir)
-    "Scheduled tasks go here.")
-  (defvar my-journal (expand-file-name "journal.org" gtd-dir)
-    "Random notes go here.")
+  (use-package dockerfile-mode
+    :straight t
+    :mode ("Dockerfile\\'" . dockerfile-mode))
 #+END_SRC
-
-Add files to agenda.
+** YAML
 #+BEGIN_SRC emacs-lisp
-  (setq org-agenda-files (list gtd-inbox gtd-projects gtd-tickler))
+  (use-package yaml-mode
+    :straight t
+    :mode ("\\.yml$" . yaml-mode))
 #+END_SRC
-
-Org capture templates.
+** Terraform
 #+BEGIN_SRC emacs-lisp
-  (setq org-capture-templates '(("t" "Todo [inbox]" entry
-                                 (file+headline gtd-inbox "Tasks")
-                                 "* TODO %i%?")
-                                ("T" "Tickler" entry
-                                 (file+headline gtd-tickler "Tickler")
-                                 "* %i%? \n %U")
-                                ("j" "Journal" entry
-                                 (file+headline my-journal "Journal")
-                                 "* %?\nEntered on %U\n  %i\n  %a")))
+  (use-package terraform-mode
+    :straight t
+    :mode ("\\.tf$" . terraform-mode))
 #+END_SRC
-
-My inbox is then processed and emptied daily. When processing the
-inbox, I refile each entry that is actionable and belongs to a project
-using C-c C-w, moving the entry to the appropriate place. If need be,
-I create a new project out of it.
+** JSON
 #+BEGIN_SRC emacs-lisp
-  (setq org-refile-targets '((gtd-projects :maxlevel . 3)
-                             (gtd-someday :level . 1)
-                             (gtd-tickler :maxlevel . 2)))
+  (use-package json-navigator
+    :straight t)
 #+END_SRC
-
-** Tags
-Tagging is done using C-c C-c on a headline, whether it's a project or
-action. I use tags for several purposes:
-
-- Regular categories, like :emacs: or *:writing:*;
-- Tags that link to people, like *:daniel:*;
-- GTD contexts.
-
-The following context are suggested: *@home*, *@office*,
-*@travelling*, *@phone*, *@email*, *@errands*.
-
-** ToDo keywords
-I put a todo keyword in all project entries. I think I use fairly
-regular todo keywords: *TODO*, *WAITING*, *DONE* and *CANCELLED* mostly. The
-first two for are used for incomplete states, and the last two for
-completed states.
-
-#+BEGIN_SRC emacs-lisp
-(setq org-todo-keywords '((sequence "TODO(t)" "WAITING(w)" "|" "DONE(d)" "CANCELLED(c)")))
-#+END_SRC
-
-When on a headline, press C-c C-t to set the TODO keyword.
-
-** Timestamps, scheduling & deadlines
-I tend to avoid using timestamps in my projects as much as
-possible. The reason is simple: unless an entry is an appointment (to
-the dentist for instance) or has a fixed deadline (a release scheduled
-with a customer), I should decide what to work on depending on the
-current context (among other things). This also keeps my agenda clean,
-free of any fake or self-imposed deadline or schedule.
-
-If realy needed, press C-c C-s on an entry, and enter the date and/or
-time. To add a deadline, press C-c C-d.
-
-** Filtering projects & actions
-
-I use custom agenda commands mostly to get an overview of actions by
-context or tag.
-
-Following the GTD principle, what I usually want is to only show the
-first action to be done (or next action) for each project with the
-@office tag.
-
-That can be achieved using a skipping condition:
-#+BEGIN_SRC emacs-lisp
-  (setq org-agenda-custom-commands
-        '(("o" "At the office" tags-todo "@office"
-           ((org-agenda-overriding-header "Office")
-            (org-agenda-skip-function #'my-org-agenda-skip-all-siblings-but-first)))))
-
-  (defun my-org-agenda-skip-all-siblings-but-first ()
-    "Skip all but the first non-done entry."
-    (let (should-skip-entry)
-      (unless (org-current-is-todo)
-        (setq should-skip-entry t))
-      (save-excursion
-        (while (and (not should-skip-entry) (org-goto-sibling t))
-          (when (org-current-is-todo)
-            (setq should-skip-entry t))))
-      (when should-skip-entry
-        (or (outline-next-heading)
-            (goto-char (point-max))))))
-
-  (defun org-current-is-todo ()
-    (string= "TODO" (org-get-todo-state)))
-#+END_SRC
-
-Setup other agenda windows that I expect to be usefull:
-#+BEGIN_SRC emacs-lisp
-  (setq org-agenda-custom-commands
-        '(("h" "Tasks to do at home" tags-todo "@home"
-           ((org-agenda-overriding-header "Home")
-            (org-agenda-skip-function #'my-org-agenda-skip-all-siblings-but-first)))))
-
-  (setq org-agenda-custom-commands
-        '(("e" "Go somethere do something" tags-todo "@errands"
-           ((org-agenda-overriding-header "Errands")))))
-#+END_SRC
-
-** The "Someday/Maybe" list
-Did you notice that someday.org is not part of the agenda files set in
-org-agenda-files?
-
-That's because I do not want to see any entry from this file appearing
-in my agenda buffers, unless I'm doing my weekly review. That's
-exactly the purpose of the "Someday/Maybe" list.
-
-This file should be reviewed once a week as part of the weekly review
-(which I do this on Sunday evenings).
-
-During each weekly review, I move projects back and forth between the
-"active" state (in gtd.org) and "later" state (in someday.org).
-
-For instance, if a project has moved forward to a certain point, but I
-know that it will stall for a few weeks for some reason, I move it to
-someday.org. During a later weekly review, I'll move it back to
-gtd.org when it will become active again.
-
-To move projects around, I also use refiling.
-
-** The tickler
-Let's say you will have to pay a bill in a month. You need to write it
-down in your GTD if you don't want to miss the deadline. But you also
-don't want to be reminded of that each and every time you browse
-through your GTD projects: now is not the time to pay it.
-
-That's where the tickler kicks in: Add an entry to your tickler file
-with a timestamp, and forget about it!
-
-When time will come, the action will appear in your Org Agenda,
-reminding you of the bill you have to pay, and all you will have to do
-is moving it to your inbox. Until then, you can just focus on
-something else and free your mind from this task.
